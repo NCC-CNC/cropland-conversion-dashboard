@@ -64,8 +64,27 @@ jobs:
   #         key: cache-${{ runner.os }}-${{ hashFiles('LOCKFILE') }}
   #     - run: YOUR_BUILD_AND_TEST_COMMAND
 
+  web:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
   checks:
-    needs: [changes, repo-hygiene]
+    needs: [changes, repo-hygiene, web]
     if: always()
     runs-on: ubuntu-latest
     steps:

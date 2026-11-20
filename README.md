@@ -4,8 +4,19 @@ An online dashboard to select an area on a map and quickly see how much
 natural habitat (forest, grassland, wetland) was converted to cropland, based
 on the AAFC Annual Crop Inventory.
 
-**Status:** idea and design stage; no code yet. See
+**Status:** MVP web app in [`web/`](web/README.md), developed against synthetic
+demo data until the pipeline output lands. See
 [`docs/design/00_project_brief.md`](docs/design/00_project_brief.md).
+
+## Quick start
+
+```bash
+cd web
+npm ci
+npm run dev
+```
+
+The app is deployed to GitHub Pages from `main`.
 
 ## Why
 
@@ -23,9 +34,9 @@ once for branch protection and labels.
 
 ## Solo-maintainer auto-merge (optional)
 
-`.github/workflows-optional/` holds two workflows that make the owner's own
-green PRs merge themselves. They are not active until you move them into
-`.github/workflows/`.
+`.github/workflows/` holds two workflows that make the maintainer's own green
+PRs merge themselves. `auto-merge.yml` matches the maintainer by login
+(`ricschuster`), since the repo is owned by an organization.
 
 - `auto-merge.yml` arms squash auto-merge on PRs opened by the repository
   owner (never on anyone else's, Dependabot included) and brings the PR level

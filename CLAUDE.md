@@ -23,7 +23,8 @@ See `docs/design/00_project_brief.md` for the full brief.
 
 ## Project status
 
-Idea and design stage. No code yet. Next milestone: a feasibility spike on
+MVP under way: web app in `web/` on synthetic data, pipeline in `pipeline/`.
+Next milestone: a feasibility spike on
 one ecozone (data download, 5 year snapshots, transition matrix, validation
 against known conversion). Open GitHub issues are the live task tracker.
 
@@ -40,18 +41,26 @@ expand scope without a design note in `docs/design/` or an ADR in
 
 ## Stack
 
-Not chosen yet. Likely shape: pre-computed regional transition summaries
-(for example cloud-optimized GeoTIFF or zonal tables) behind a light web map
-front end, so queries do not scan full rasters. Record the choice in an ADR.
+Static site on GitHub Pages: Vite, TypeScript, MapLibre GL JS, terra-draw
+(polygon drawing) and Turf, in `web/`. It sums pre-computed 1 km grid cells
+(JSON under `web/public/data/`) inside the drawn polygon; no backend. The data
+format is the contract in `docs/design/02_mvp_data_contract.md`. See
+`docs/decisions/0002-mvp-stack-and-hosting.md`.
 
 ## Commands
 
-None yet. Fill in once the stack is chosen; `CONTRIBUTING.md` Setup should
-match.
+Run from `web/` (Node 20.19 or newer):
+
+- `npm ci` then `npm run dev` for the dev server.
+- `npm run typecheck`, `npm test`, `npm run build`: what CI runs.
+- `npm run fixture` regenerates the synthetic demo data.
 
 ## Repo structure
 
-See the tree; layout will be added once code exists.
+- `web/`: the static web app (`src/lib/` holds pure, tested logic).
+- `web/public/data/<area_id>/`: per-area `meta.json` and `cells.json`, plus
+  `areas.json`. Written by the pipeline; `demo-fixture/` is synthetic.
+- `docs/`: design notes, ADRs, handoffs.
 
 ## Working rules
 

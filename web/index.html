@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Screening tool: draw an area and see how much natural habitat was converted to cropland, from the AAFC Annual Crop Inventory." />
+    <link rel="icon" href="data:," />
+    <title>Cropland Conversion Dashboard</title>
+  </head>
+  <body>
+    <a class="skip" href="#panel">Skip to summary</a>
+    <header class="top">
+      <h1>Cropland Conversion Dashboard</h1>
+      <p class="tag">Screening tool, not parcel level. Results are approximate at the 1 km cell scale.</p>
+    </header>
+    <main class="layout">
+      <section class="map-wrap" aria-label="Map">
+        <div class="toolbar" role="toolbar" aria-label="Map tools">
+          <label class="area-pick" id="area-pick-wrap" hidden>
+            <span>Area</span>
+            <select id="area-select"></select>
+          </label>
+          <button type="button" id="btn-polygon" aria-pressed="false">Draw polygon</button>
+          <button type="button" id="btn-rect" aria-pressed="false">Draw rectangle</button>
+          <button type="button" id="btn-edit" aria-pressed="false">Edit shape</button>
+          <button type="button" id="btn-view" title="Use the current map view as the area. Works without a mouse: pan and zoom with the keyboard first.">Use map view</button>
+          <button type="button" id="btn-clear">Clear</button>
+          <label class="chk"><input type="checkbox" id="chk-grid" /> Show data grid</label>
+        </div>
+        <div id="map" role="application" aria-label="Interactive map. Use the buttons above to draw an area."></div>
+        <p class="hint" id="hint" aria-live="polite"></p>
+      </section>
+      <aside id="panel" class="panel" tabindex="-1" aria-label="Summary">
+        <div id="summary" aria-live="polite"></div>
+        <div class="actions">
+          <button type="button" id="btn-csv" disabled>Download CSV</button>
+        </div>
+        <details class="about" id="about" open>
+          <summary>About this data</summary>
+          <div id="about-body"></div>
+        </details>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
