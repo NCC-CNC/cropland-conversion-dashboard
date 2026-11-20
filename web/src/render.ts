@@ -221,9 +221,9 @@ function renderClasses(iv: IntervalSummary): HTMLElement {
   const hr = el('tr');
   for (const [label, num] of [
     ['Class', false],
-    [`Natural ha`, true],
-    ['Converted ha', true],
-    ['% converted', true],
+    ['Natural', true],
+    ['Converted', true],
+    ['Share', true],
   ] as const) {
     const th = el('th', label, num ? 'num' : undefined);
     th.scope = 'col';
@@ -254,7 +254,7 @@ function renderClasses(iv: IntervalSummary): HTMLElement {
   sec.append(
     el(
       'p',
-      'Class labels shift between Annual Crop Inventory years, so the split by class is indicative. The total is the more reliable figure.',
+      'Hectares, with share as percent of natural cover in the baseline year. Class labels shift between Annual Crop Inventory years, so the split by class is indicative. The total is the more reliable figure.',
       'small',
     ),
   );

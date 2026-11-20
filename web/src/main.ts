@@ -82,7 +82,7 @@ const modeButtons: Record<string, HTMLButtonElement> = {
 const HINTS: Record<string, string> = {
   polygon: 'Click to add corners. Double-click, or click the last point again, to finish. Esc cancels.',
   rectangle: 'Press on one corner, drag to the opposite corner, then release. Esc cancels.',
-  select: 'Drag the shape to move it, or drag a corner to reshape it.',
+  select: 'Drag the shape to move it, or drag a corner to reshape.',
   static: '',
 };
 
@@ -127,11 +127,11 @@ function polygonFromDraw(): PolygonGeometry | null {
 function update(poly: PolygonGeometry | null): void {
   if (!meta || !cells) return;
   syncHash(poly);
-  shareBtn.disabled = !poly;
   resultsBtn.hidden = !poly;
   if (!poly) {
     summary = null;
     csvBtn.disabled = true;
+    shareBtn.disabled = true;
     renderEmpty(summaryEl);
     return;
   }
@@ -140,10 +140,13 @@ function update(poly: PolygonGeometry | null): void {
   summary = summarize(cells, meta, idx);
   if (status === 'outside-coverage' || status === 'no-natural-cells') {
     csvBtn.disabled = true;
+    shareBtn.disabled = true;
+    setHint('');
     renderMessage(summaryEl, status, zoomToArea);
     return;
   }
   csvBtn.disabled = false;
+  shareBtn.disabled = false;
   renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly) });
 }
 
@@ -246,7 +249,10 @@ function endRectDrag(cancel: boolean, end?: maplibregl.LngLat, endPx?: { x: numb
   map.dragPan.enable();
   if (cancel || !start || !startPx || !end || !endPx) return;
   // Ignore a stray click or tiny drag.
-  if (Math.abs(endPx.x - startPx.x) < 6 || Math.abs(endPx.y - startPx.y) < 6) return;
+  if (Math.abs(endPx.x - startPx.x) < 6 || Math.abs(endPx.y - startPx.y) < 6) {
+    setHint('That shape is too small. Press and drag across a larger area.', 3500);
+    return;
+  }
   addRectangle(rectCoords(start, end));
 }
 
@@ -266,10 +272,22 @@ function setupRectDrag(): void {
   };
   map.on('mousedown', down);
   map.on('touchstart', down);
-  map.on('mousemove', move);
   map.on('touchmove', move);
-  map.on('mouseup', up);
   map.on('touchend', up);
+  // Track the mouse on the window so releasing over a map overlay (legend, toolbar) still ends the drag.
+  const winPoint = (e: MouseEvent) => {
+    const r = map.getCanvas().getBoundingClientRect();
+    const point = { x: e.clientX - r.left, y: e.clientY - r.top };
+    return { point, lngLat: map.unproject([point.x, point.y]) };
+  };
+  window.addEventListener('mousemove', (e) => {
+    if (rectStart) setPreview(rectCoords(rectStart, winPoint(e).lngLat));
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (!rectStart) return;
+    const w = winPoint(e);
+    endRectDrag(false, w.lngLat, w.point);
+  });
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && rectStart) endRectDrag(true);
   });
