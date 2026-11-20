@@ -12,12 +12,17 @@ The workflow is:
 
 ## Setup
 
-TODO: setup and local-run instructions once the stack is chosen. A good shape:
+The web app lives in `web/` and needs Node 20.19 or newer.
 
-- Prerequisites (tool and version).
-- A short block that installs, runs, and checks. Make its last line the
-  command CI runs, and say so.
-- Pointers to `CLAUDE.md` for anything stack-specific or slow.
+```bash
+cd web
+npm ci
+npm run dev          # local dev server
+npm run typecheck && npm test && npm run build   # what CI runs
+```
+
+See `web/README.md` for the data layout and the synthetic demo fixture, and
+`CLAUDE.md` for anything stack-specific.
 
 ## Conventions
 
