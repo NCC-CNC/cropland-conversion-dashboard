@@ -174,3 +174,34 @@ describe('visibleAreas', () => {
     expect(visibleAreas([fx, real])).toEqual([real]);
   });
 });
+
+import { polygonAreaKm2 } from './geo';
+import { decodeShare, encodeShare } from './share';
+
+describe('polygonAreaKm2', () => {
+  it('is close to 1 km2 for a 1 km square near the equator', () => {
+    const d = 1 / 111.32;
+    const poly = {
+      type: 'Polygon' as const,
+      coordinates: [[[0, 0], [d, 0], [d, d], [0, d], [0, 0]]],
+    };
+    expect(polygonAreaKm2(poly)).toBeGreaterThan(0.98);
+    expect(polygonAreaKm2(poly)).toBeLessThan(1.02);
+  });
+});
+
+describe('share links', () => {
+  const poly = {
+    type: 'Polygon' as const,
+    coordinates: [[[-112.9, 52.2], [-112.6, 52.2], [-112.6, 52.4], [-112.9, 52.2]]],
+  };
+  it('round-trips area and shape', () => {
+    const back = decodeShare(encodeShare('ab', poly));
+    expect(back.area).toBe('ab');
+    expect(back.poly?.coordinates[0]).toEqual(poly.coordinates[0]);
+  });
+  it('ignores malformed input', () => {
+    expect(decodeShare('#a=x&s=nope')).toEqual({ area: 'x' });
+    expect(decodeShare('')).toEqual({});
+  });
+});

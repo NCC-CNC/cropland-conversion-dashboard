@@ -15,13 +15,48 @@ import { loadAreas, loadCells, loadMeta } from './lib/data';
 import { buildGrid } from './lib/grid';
 import { cellsInPolygon, polygonBBox, selectionStatus, summarize } from './lib/summary';
 import type { AreaEntry, Cells, Meta, PolygonGeometry, Summary } from './lib/types';
-import { renderAbout, renderEmpty, renderMessage, renderSummary } from './render';
+import { polygonAreaKm2 } from './lib/geo';
+import { decodeShare, encodeShare } from './lib/share';
+import { ICONS, LOGO } from './icons';
+import {
+  renderAbout,
+  renderEmpty,
+  renderError,
+  renderLoading,
+  renderMessage,
+  renderSummary,
+  resetInterval,
+} from './render';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const summaryEl = $('summary');
 const aboutBody = $('about-body');
 const hintEl = $('hint');
 const csvBtn = $<HTMLButtonElement>('btn-csv');
+const shareBtn = $<HTMLButtonElement>('btn-share');
+const legendEl = $('legend');
+const resultsBtn = $('btn-results');
+resultsBtn.addEventListener('click', () => $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+const toastEl = $('toast');
+
+$('logo').innerHTML = LOGO;
+document.querySelectorAll<HTMLElement>('[data-icon]').forEach((n) => {
+  n.innerHTML = ICONS[n.dataset.icon as keyof typeof ICONS] ?? '';
+  n.style.display = 'inline-flex';
+});
+
+let toastTimer: number | undefined;
+function toast(text: string): void {
+  toastEl.textContent = text;
+  toastEl.classList.add('show');
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2400);
+}
+
+function syncHash(poly: PolygonGeometry | null): void {
+  if (!meta) return;
+  history.replaceState(null, '', encodeShare(meta.area_id, poly));
+}
 const areaSelect = $<HTMLSelectElement>('area-select');
 const modeButtons: Record<string, HTMLButtonElement> = {
   polygon: $('btn-polygon'),
@@ -56,7 +91,7 @@ const map = new maplibregl.Map({
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       },
     },
-    layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+    layers: [{ id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-saturation': -0.45, 'raster-contrast': -0.1 } }],
   },
   center: [-106, 52.5],
   zoom: 8,
@@ -76,6 +111,9 @@ function polygonFromDraw(): PolygonGeometry | null {
 
 function update(poly: PolygonGeometry | null): void {
   if (!meta || !cells) return;
+  syncHash(poly);
+  shareBtn.disabled = !poly;
+  resultsBtn.hidden = !poly;
   if (!poly) {
     summary = null;
     csvBtn.disabled = true;
@@ -91,7 +129,7 @@ function update(poly: PolygonGeometry | null): void {
     return;
   }
   csvBtn.disabled = false;
-  renderSummary(summaryEl, summary, meta, status);
+  renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly) });
 }
 
 function setMode(mode: string): void {
@@ -221,17 +259,17 @@ function setupRectDrag(): void {
     if (e.key === 'Escape' && rectStart) endRectDrag(true);
   });
   map.addSource('rect-preview', { type: 'geojson', data: emptyFc });
-  map.addLayer({ id: 'rect-preview-fill', type: 'fill', source: 'rect-preview', paint: { 'fill-color': '#1d6fa5', 'fill-opacity': 0.15 } });
-  map.addLayer({ id: 'rect-preview-line', type: 'line', source: 'rect-preview', paint: { 'line-color': '#1d6fa5', 'line-width': 2, 'line-dasharray': [2, 1] } });
+  map.addLayer({ id: 'rect-preview-fill', type: 'fill', source: 'rect-preview', paint: { 'fill-color': '#0b5d3b', 'fill-opacity': 0.15 } });
+  map.addLayer({ id: 'rect-preview-line', type: 'line', source: 'rect-preview', paint: { 'line-color': '#0b5d3b', 'line-width': 2, 'line-dasharray': [2, 1] } });
 }
 
 /** Replace any shape with this rectangle and select it for editing. */
-function addRectangle(coords: number[][]): void {
+function addRectangle(coords: number[][], mode: 'rectangle' | 'polygon' = 'rectangle'): void {
   const r = (v: number) => Math.round(v * 1e6) / 1e6; // terra-draw rejects excess precision
   draw.clear();
   const feature: GeoJSONStoreFeatures = {
     type: 'Feature',
-    properties: { mode: 'rectangle' },
+    properties: { mode },
     geometry: { type: 'Polygon', coordinates: [coords.map(([x, y]) => [r(x), r(y)])] },
   };
   const res = draw.addFeatures([feature]);
@@ -258,6 +296,7 @@ function setGrid(visible: boolean): void {
     map.setLayoutProperty('grid-fill', 'visibility', v);
     map.setLayoutProperty('grid-line', 'visibility', v);
   }
+  legendEl.hidden = !visible;
 }
 
 function setupGridLayers(): void {
@@ -266,34 +305,32 @@ function setupGridLayers(): void {
     id: 'grid-fill',
     type: 'fill',
     source: 'grid',
-    layout: { visibility: 'none' },
     paint: {
-      'fill-color': ['interpolate', ['linear'], ['get', 'conv'], 0, '#fff3b0', 10, '#f4a259', 40, '#c1440e'],
-      'fill-opacity': 0.35,
+      'fill-color': ['interpolate', ['linear'], ['get', 'conv'], 0, '#ffe08a', 5, '#f4a259', 20, '#e0702f', 50, '#b13a0b'],
+      'fill-opacity': ['case', ['>', ['get', 'conv'], 0], 0.62, 0.06],
     },
   });
   map.addLayer({
     id: 'grid-line',
     type: 'line',
     source: 'grid',
-    layout: { visibility: 'none' },
-    paint: { 'line-color': '#6b4f1d', 'line-opacity': 0.25, 'line-width': 0.5 },
+    paint: { 'line-color': '#6b4f1d', 'line-opacity': 0.2, 'line-width': 0.5 },
   });
 }
 
 async function loadArea(id: string): Promise<void> {
-  summaryEl.replaceChildren();
-  summaryEl.textContent = 'Loading data...';
+  renderLoading(summaryEl);
   try {
     [meta, cells] = await Promise.all([loadMeta(id), loadCells(id)]);
   } catch (err) {
     meta = null;
     cells = null;
-    summaryEl.textContent = `Could not load data for this area. ${(err as Error).message}`;
+    renderError(summaryEl, `Could not load data for this area. ${(err as Error).message}`);
     return;
   }
   draw.clear();
   setMode('static');
+  resetInterval();
   renderAbout(aboutBody, meta);
   const grid = buildGrid(cells, meta);
   (map.getSource('grid') as maplibregl.GeoJSONSource).setData(grid.data);
@@ -307,8 +344,21 @@ async function loadArea(id: string): Promise<void> {
   if (grid.drawn < grid.total) {
     hintEl.textContent = `Grid overlay thinned to ${grid.drawn} of ${grid.total} cells for speed. Summaries use every cell.`;
   }
+  const legendTitle = $('legend-title');
+  const first = meta.intervals[0];
+  if (first) legendTitle.textContent = `Converted ha per cell, ${first.from} to ${first.to}`;
   update(null);
 }
+
+shareBtn.addEventListener('click', async () => {
+  const url = location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Link copied');
+  } catch {
+    window.prompt('Copy this link', url);
+  }
+});
 
 csvBtn.addEventListener('click', () => {
   if (!summary || !meta) return;
@@ -335,16 +385,23 @@ map.on('load', async () => {
   try {
     areas = visibleAreas(await loadAreas());
   } catch (err) {
-    summaryEl.textContent = `Could not load the list of areas. ${(err as Error).message}`;
+    renderError(summaryEl, `Could not load the list of areas. ${(err as Error).message}`);
     return;
   }
   if (areas.length === 0) {
-    summaryEl.textContent = 'No data areas are available yet.';
+    renderError(summaryEl, 'No data areas are available yet.');
     return;
   }
   for (const a of areas) areaSelect.append(new Option(a.name, a.id));
   $('area-pick-wrap').hidden = areas.length < 2;
-  await loadArea(areas[0].id);
+  const shared = decodeShare(location.hash);
+  const start = areas.find((a) => a.id === shared.area) ?? areas[0];
+  areaSelect.value = start.id;
+  await loadArea(start.id);
+  if (shared.poly && meta) {
+    const ring = shared.poly.coordinates[0];
+    addRectangle(ring, ring.length === 5 ? 'rectangle' : 'polygon');
+  }
   document.body.dataset.ready = 'true';
 });
 
