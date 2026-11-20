@@ -147,7 +147,7 @@ button { cursor: pointer; }
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { z-index: 4; }
 .maplibregl-ctrl-group button { width: 40px !important; height: 40px !important; }
 .maplibregl-ctrl button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
-.maplibregl-ctrl-attrib-button { width: 32px !important; height: 32px !important; }
+.maplibregl-ctrl-attrib { font-size: 11px; }
 thead th { white-space: nowrap; }
 .linkbtn { margin-top: var(--s2); min-height: 40px; padding: 0 var(--s4); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-weight: 600; }
 .linkbtn:hover { border-color: var(--accent); }
