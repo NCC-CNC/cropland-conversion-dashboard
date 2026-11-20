@@ -282,7 +282,7 @@ tr.total th, tr.total td { font-weight: 700; border-top: 2px solid var(--border)
   .group button .lbl { display: none; }
   .group button { padding: 0 var(--s3); min-width: 44px; justify-content: center; }
   .hint { top: 72px; max-width: calc(100% - 110px); font-size: 0.8rem; border-radius: var(--radius); }
-  .legend { width: 160px; left: var(--s3); right: auto; bottom: 156px; }
+  .legend { width: 128px; right: var(--s3); left: auto; top: 168px; bottom: auto; padding: 6px 8px; font-size: 0.68rem; opacity: 0.92; }
   .hero .big { font-size: 2rem; }
 }
 
