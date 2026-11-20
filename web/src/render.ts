@@ -215,7 +215,7 @@ function renderClasses(iv: IntervalSummary): HTMLElement {
   sec.append(head);
   const table = el('table', undefined, 'indicative');
   table.append(
-    el('caption', `Conversion of natural habitat to crop by class, ${iv.from} to ${iv.to}`, 'sr-only'),
+    el('caption', `Conversion of natural habitat to crop by class, ${iv.from} to ${iv.to}. Natural and Converted are in hectares; Share is percent.`, 'sr-only'),
   );
   const thead = el('thead');
   const hr = el('tr');
