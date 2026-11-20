@@ -82,7 +82,7 @@ const modeButtons: Record<string, HTMLButtonElement> = {
 const HINTS: Record<string, string> = {
   polygon: 'Click to add corners. Double-click, or click the last point again, to finish. Esc cancels.',
   rectangle: 'Press on one corner, drag to the opposite corner, then release. Esc cancels.',
-  select: 'Drag the shape to move it, or drag a corner to reshape.',
+  select: 'Drag to move the shape, or drag a corner to reshape.',
   static: '',
 };
 
@@ -108,9 +108,11 @@ const map = new maplibregl.Map({
     },
     layers: [{ id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-saturation': -0.45, 'raster-contrast': -0.1 } }],
   },
+  attributionControl: false,
   center: [-106, 52.5],
   zoom: 8,
 });
+map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
 
