@@ -13,7 +13,10 @@ def area_dirs():
     areas_file = DATA / "areas.json"
     if not areas_file.exists():
         pytest.skip("no generated data; run python -m cropconv.run first")
-    return [DATA / a["id"] for a in json.loads(areas_file.read_text(encoding="utf-8"))]
+    # The web app ships a synthetic demo fixture that the pipeline does not
+    # produce; it is not held to the pipeline's output checks.
+    areas = json.loads(areas_file.read_text(encoding="utf-8"))
+    return [DATA / a["id"] for a in areas if "fixture" not in a["id"]]
 
 
 def all_strings(obj):
