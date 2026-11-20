@@ -5,47 +5,53 @@ context automatically, so keep it to direction and rules, not a task list.
 
 ## Project name
 
-{{PROJECT_NAME}}
+Cropland Conversion Dashboard
 
 ## Project purpose
 
-{{One or two paragraphs: what this project is, who it is for, and the core
-idea in plain terms. See `docs/design/00_project_brief.md` for the full
-brief.}}
+An online dashboard where a user selects an area (cursor or polygon) and
+immediately sees summary statistics on land conversion to cropland: hectares
+and percent of natural habitat (forest, grassland, wetland) converted to crop
+between Agriculture and Agri-Food Canada (AAFC) Annual Crop Inventory
+snapshots. Conservation practitioners currently rely on coarse regional
+reports when justifying grants; this gives them a quick, area-specific answer.
+
+The core idea: crop is mapped with high accuracy (reported 90%+) in the
+Annual Crop Inventory, so comparing a recent crop map backward against
+earlier ones identifies which cells were not crop before and are crop now.
+See `docs/design/00_project_brief.md` for the full brief.
 
 ## Project status
 
-{{Where things stand right now: design, pre-build, MVP in progress, etc., and
-what the next milestone is. Open GitHub issues are the live task tracker;
-`docs/design/03_milestones.md` (if present) is the shape of the plan.}}
+Idea and design stage. No code yet. Next milestone: a feasibility spike on
+one ecozone (data download, 5 year snapshots, transition matrix, validation
+against known conversion). Open GitHub issues are the live task tracker.
 
 ## Scope
 
-{{What this project is, and just as importantly, what it deliberately is NOT.
-Do not expand scope without a design note in `docs/design/` or an ADR in
-`docs/decisions/`.}}
+In scope: Canada-wide (staged by ecozone or region) conversion summaries from
+Annual Crop Inventory snapshots at roughly 5 year steps, user-drawn area
+queries, hectare and percent outputs by natural cover class.
+
+Not in scope (for now): new land cover classification, non-AAFC sources,
+causal attribution of conversion, parcel-level or legal-grade results. Do not
+expand scope without a design note in `docs/design/` or an ADR in
+`docs/decisions/`.
 
 ## Stack
 
-{{Languages, frameworks, test runner, deployment target, and any hard
-architectural constraints (for example: "business logic stays framework-free
-under `src/core/` so it is unit-testable"). Link to the relevant ADR(s) in
-`docs/decisions/` for the reasoning.}}
+Not chosen yet. Likely shape: pre-computed regional transition summaries
+(for example cloud-optimized GeoTIFF or zonal tables) behind a light web map
+front end, so queries do not scan full rasters. Record the choice in an ADR.
 
 ## Commands
 
-{{The everyday commands: run, test, lint/typecheck, build. One line each, and
-mark which ones are gates (non-zero exit blocks a merge). Say how long the
-slow ones take and which ones CI skips, so nobody runs a 20 minute suite by
-accident. Fill in once the stack is chosen; `CONTRIBUTING.md` Setup should
-match.}}
+None yet. Fill in once the stack is chosen; `CONTRIBUTING.md` Setup should
+match.
 
 ## Repo structure
 
-{{Optional: a short map of top-level directories, only if it adds real
-orientation beyond exploring the tree. State layering rules here too, such as "`core/` never imports from `ui/`".
-Keep it brief and expect it to drift; when in doubt, explore the tree rather
-than trusting this section.}}
+See the tree; layout will be added once code exists.
 
 ## Working rules
 
