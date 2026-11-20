@@ -36,7 +36,10 @@ const csvBtn = $<HTMLButtonElement>('btn-csv');
 const shareBtn = $<HTMLButtonElement>('btn-share');
 const legendEl = $('legend');
 const resultsBtn = $('btn-results');
-resultsBtn.addEventListener('click', () => $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+resultsBtn.addEventListener('click', () => {
+  $('panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('panel').focus({ preventScroll: true });
+});
 const toastEl = $('toast');
 
 $('logo').innerHTML = LOGO;
@@ -51,6 +54,18 @@ function toast(text: string): void {
   toastEl.classList.add('show');
   window.clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2400);
+}
+
+function zoomToArea(): void {
+  if (!meta) return;
+  map.fitBounds([[meta.bbox[0], meta.bbox[1]], [meta.bbox[2], meta.bbox[3]]], { padding: 30 });
+}
+
+let hintTimer: number | undefined;
+function setHint(text: string, ttl = 0): void {
+  hintEl.textContent = text;
+  window.clearTimeout(hintTimer);
+  if (text && ttl) hintTimer = window.setTimeout(() => (hintEl.textContent = ''), ttl);
 }
 
 function syncHash(poly: PolygonGeometry | null): void {
@@ -125,7 +140,7 @@ function update(poly: PolygonGeometry | null): void {
   summary = summarize(cells, meta, idx);
   if (status === 'outside-coverage' || status === 'no-natural-cells') {
     csvBtn.disabled = true;
-    renderMessage(summaryEl, status);
+    renderMessage(summaryEl, status, zoomToArea);
     return;
   }
   csvBtn.disabled = false;
@@ -140,7 +155,7 @@ function setMode(mode: string): void {
   // click-click rectangle mode, so terra-draw stays idle while armed.
   draw.setMode(rectArmed ? 'static' : mode);
   for (const [m, b] of Object.entries(modeButtons)) b.setAttribute('aria-pressed', String(m === mode));
-  hintEl.textContent = HINTS[mode] ?? '';
+  setHint(HINTS[mode] ?? '', mode === 'select' ? 4000 : 0);
 }
 
 function keepOnly(id: string | number): void {
@@ -189,7 +204,7 @@ function setupDraw(): void {
   modeButtons.rectangle.addEventListener('click', () => setMode('rectangle'));
   modeButtons.select.addEventListener('click', () => {
     if (!polygonFromDraw()) {
-      hintEl.textContent = 'Draw a shape first, then use Edit shape.';
+      setHint('Draw a shape first, then use Edit shape.', 4000);
       return;
     }
     setMode('select');
@@ -342,7 +357,7 @@ async function loadArea(id: string): Promise<void> {
     { padding: 30, duration: 0 },
   );
   if (grid.drawn < grid.total) {
-    hintEl.textContent = `Grid overlay thinned to ${grid.drawn} of ${grid.total} cells for speed. Summaries use every cell.`;
+    setHint(`Grid overlay thinned to ${grid.drawn} of ${grid.total} cells for speed. Summaries use every cell.`, 6000);
   }
   const legendTitle = $('legend-title');
   const first = meta.intervals[0];
@@ -377,6 +392,8 @@ $<HTMLInputElement>('chk-grid').addEventListener('change', (e) =>
 );
 
 areaSelect.addEventListener('change', () => void loadArea(areaSelect.value));
+
+renderLoading(summaryEl);
 
 map.on('load', async () => {
   setupGridLayers();
