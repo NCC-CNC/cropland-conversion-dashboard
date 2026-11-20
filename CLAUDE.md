@@ -23,10 +23,11 @@ See `docs/design/00_project_brief.md` for the full brief.
 
 ## Project status
 
-MVP under way: web app in `web/` on synthetic data, pipeline in `pipeline/`.
-Next milestone: a feasibility spike on
-one ecozone (data download, 5 year snapshots, transition matrix, validation
-against known conversion). Open GitHub issues are the live task tracker.
+MVP live on GitHub Pages: web app in `web/`, real ACI data for one test window
+(Alberta Parkland near Stettler) from the pipeline in `pipeline/`. Next:
+validate conversion rates against independent sources, settle the noise
+filter defaults, and widen coverage. Open GitHub issues are the live task
+tracker.
 
 ## Scope
 
@@ -55,11 +56,18 @@ Run from `web/` (Node 20.19 or newer):
 - `npm run typecheck`, `npm test`, `npm run build`: what CI runs.
 - `npm run fixture` regenerates the synthetic demo data.
 
+Run from `pipeline/` (Python 3.12 or newer, venv with
+`pip install -r requirements.txt`):
+
+- `python -m cropconv.run` fetches (cached), computes and writes the JSON.
+- `python -m pytest` runs the tests (CI runs these).
+
 ## Repo structure
 
 - `web/`: the static web app (`src/lib/` holds pure, tested logic).
 - `web/public/data/<area_id>/`: per-area `meta.json` and `cells.json`, plus
   `areas.json`. Written by the pipeline; `demo-fixture/` is synthetic.
+- `pipeline/`: Python pipeline from AAFC ACI snapshots to the grid JSON.
 - `docs/`: design notes, ADRs, handoffs.
 
 ## Working rules
