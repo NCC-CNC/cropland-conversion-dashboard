@@ -1,12 +1,12 @@
 [
   {
+    "id": "ab-parkland-stettler",
+    "name": "Alberta Parkland test window (Stettler area)",
+    "bbox": [-113.0747, 52.0652, -112.3416, 52.5148]
+  },
+  {
     "id": "demo-fixture",
     "name": "Demo fixture (SYNTHETIC data)",
-    "bbox": [
-      -106.5,
-      52.2,
-      -105.7,
-      52.7
-    ]
+    "bbox": [-106.5, 52.2, -105.7, 52.7]
   }
 ]
