@@ -58,7 +58,11 @@ or any conversion. Cell centroids are WGS84.
 ```
 
 - All arrays within a file have equal length, hectares rounded to 2 decimals.
-- `natural_ha[c]` is hectares of class c in the baseline snapshot.
+- `natural_ha[c]` is hectares of class c in the baseline snapshot, excluding
+  cells that were already mapped as crop in an earlier snapshot (the pipeline
+  treats those as fallow, forage rotation or mapping error; the earliest
+  baseline has no earlier snapshot, so none are excluded there). Cells are
+  therefore comparable between `natural_ha` and `converted_ha`.
 - `converted_ha[c]` is hectares of class c in the baseline snapshot that are
   crop in the latest snapshot after the noise filter (method in meta).
 - The web app computes, for a polygon: sum of cells whose centroid lies inside,
@@ -68,3 +72,8 @@ or any conversion. Cell centroids are WGS84.
 
 - No em dashes in any text field.
 - Keep `cells.json` under about 5 MB for the MVP area.
+- `snapshots` lists the baseline years and the latest year. The pipeline may
+  also read the year before the latest as a persistence check; it is named in
+  `method` but is not an interval baseline.
+- `area_id` is free text (the test window is `ab-parkland-stettler`); the web
+  app must read it from `areas.json`, not hard-code it.

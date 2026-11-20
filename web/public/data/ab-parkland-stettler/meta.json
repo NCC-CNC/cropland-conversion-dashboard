@@ -1,0 +1,53 @@
+{
+  "area_id": "ab-parkland-stettler",
+  "name": "Alberta Parkland test window (Stettler area)",
+  "bbox": [
+    -113.0747,
+    52.0652,
+    -112.3416,
+    52.5148
+  ],
+  "cell_size_m": 1000,
+  "snapshots": [
+    2011,
+    2016,
+    2021,
+    2025
+  ],
+  "latest": 2025,
+  "natural_classes": [
+    "forest",
+    "grassland",
+    "wetland",
+    "shrubland"
+  ],
+  "intervals": [
+    {
+      "from": 2011,
+      "to": 2025,
+      "years": 14
+    },
+    {
+      "from": 2016,
+      "to": 2025,
+      "years": 9
+    },
+    {
+      "from": 2021,
+      "to": 2025,
+      "years": 4
+    }
+  ],
+  "method": "AAFC Annual Crop Inventory classes are grouped into natural (forest 200 to 230, grassland 110, wetland 80, shrubland 50), crop (agriculture and annual or specialty crops, codes 120 to 199 except 122) and other (water, urban, barren, cloud, burnt area, pasture and forage). A pixel counts as converted when it is natural in the baseline year and crop in 2025; to reduce classification noise a cell must also be crop in the most recent earlier snapshot between the baseline and the latest year (2024); isolated patches smaller than 0.5 ha (connected pixels, 30 m) are removed; no majority filter is applied; and natural cover in a baseline year excludes cells already mapped as crop in an earlier snapshot (likely fallow, forage rotation or mapping error; the 2011 baseline has no earlier snapshot). Pasture and forage (ACI 122) is not counted as crop, so conversion to tame pasture or hay is not detected. Converted pixels are summed by baseline natural class on a 1 km grid. Percent converted is converted divided by natural cover in the baseline year.",
+  "source": "AAFC Annual Crop Inventory, OGL-Canada-2.0, https://agriculture.canada.ca/atlas/annual-crop-inventory (ImageServer: https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory)",
+  "generated": "2026-11-20",
+  "caveats": [
+    "Crop is mapped with reported accuracy of 85 to 90 percent or more by AAFC, but natural classes such as grassland, wetland and shrubland are mapped less accurately. Small differences are within map error.",
+    "The Annual Crop Inventory classification method and ground data changed over the series, so some change between years is a mapping artefact rather than a land change. Early years (2011) are the least reliable.",
+    "Native grassland cannot be separated from tame grass and pasture. Conversion to pasture or hay is not counted as crop, and some grassland counted here may be tame.",
+    "Conversion is detected from natural to crop only. Natural cover lost to urban, water or other uses is not shown, and cropland returning to grass is not subtracted.",
+    "A noise filter (persistence and minimum patch size) removes isolated single year flips, but it also removes real small conversions, so hectares are conservative for small fields and linear clearings.",
+    "Results are summed over 1 km grid cells whose centre lies inside the drawn area. The edge of a polygon is therefore approximate, and results for areas smaller than a few square kilometres are very uncertain.",
+    "This is a screening aid for planning and grant context, not a parcel level or legal grade result, and it does not say why land was converted."
+  ]
+}

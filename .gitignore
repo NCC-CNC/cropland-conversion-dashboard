@@ -27,3 +27,6 @@ tmp/
 # Claude Code local overrides (personal, not shared)
 .claude/settings.local.json
 .claude/worktrees/
+pipeline/.venv/
+pipeline/cache/
+.pytest_cache/
