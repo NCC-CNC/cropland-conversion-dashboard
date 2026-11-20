@@ -23,9 +23,9 @@ once for branch protection and labels.
 
 ## Solo-maintainer auto-merge (optional)
 
-`.github/workflows-optional/` holds two workflows that make the owner's own
-green PRs merge themselves. They are not active until you move them into
-`.github/workflows/`.
+`.github/workflows/` holds two workflows that make the maintainer's own green
+PRs merge themselves. `auto-merge.yml` matches the maintainer by login
+(`ricschuster`), since the repo is owned by an organization.
 
 - `auto-merge.yml` arms squash auto-merge on PRs opened by the repository
   owner (never on anyone else's, Dependabot included) and brings the PR level
