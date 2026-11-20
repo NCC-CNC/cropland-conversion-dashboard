@@ -25,7 +25,9 @@ permissions:
 
 jobs:
   enable-auto-merge:
-    if: github.actor == github.repository_owner && !github.event.pull_request.draft
+    # The repo is owned by an organization, so repository_owner never equals a
+    # person. Name the maintainer's login instead.
+    if: github.actor == 'ricschuster' && !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     env:
       # A step's `if` cannot read a secret or its own env, only the job's.
