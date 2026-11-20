@@ -3,44 +3,70 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Screening tool: draw an area and see how much natural habitat was converted to cropland, from the AAFC Annual Crop Inventory." />
-    <link rel="icon" href="data:," />
+    <meta name="description" content="Draw an area and see how much natural habitat was converted to cropland, from the AAFC Annual Crop Inventory." />
+    <meta name="theme-color" content="#0b5d3b" />
+    <meta property="og:title" content="Cropland Conversion Dashboard" />
+    <meta property="og:description" content="Draw an area and see how much forest, grassland and wetland was converted to cropland." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <title>Cropland Conversion Dashboard</title>
   </head>
   <body>
     <a class="skip" href="#panel">Skip to summary</a>
     <header class="top">
-      <h1>Cropland Conversion Dashboard</h1>
-      <p class="tag">Screening tool, not parcel level. Results are approximate at the 1 km cell scale.</p>
+      <div class="brand">
+        <span id="logo"></span>
+        <div>
+          <h1>Cropland Conversion Dashboard</h1>
+          <p class="tag">Natural habitat converted to cropland, from the AAFC Annual Crop Inventory</p>
+        </div>
+      </div>
+      <span class="pill" title="Results are screening level and not yet validated against independent sources.">Prototype</span>
     </header>
     <main class="layout">
       <section class="map-wrap" aria-label="Map">
+        <div id="map" role="application" aria-label="Interactive map. Use the tool buttons to draw an area."></div>
         <div class="toolbar" role="toolbar" aria-label="Map tools">
           <label class="area-pick" id="area-pick-wrap" hidden>
-            <span>Area</span>
+            <span class="sr-only">Study area</span>
             <select id="area-select"></select>
           </label>
-          <button type="button" id="btn-polygon" aria-pressed="false">Draw polygon</button>
-          <button type="button" id="btn-rect" aria-pressed="false">Draw rectangle</button>
-          <button type="button" id="btn-edit" aria-pressed="false">Edit shape</button>
-          <button type="button" id="btn-view" title="Use the current map view as the area. Works without a mouse: pan and zoom with the keyboard first.">Use map view</button>
-          <button type="button" id="btn-clear">Clear</button>
-          <label class="chk"><input type="checkbox" id="chk-grid" /> Show data grid</label>
+          <div class="group" role="group" aria-label="Draw">
+            <button type="button" id="btn-polygon" aria-pressed="false"><span data-icon="polygon"></span><span class="lbl">Polygon</span></button>
+            <button type="button" id="btn-rect" aria-pressed="false"><span data-icon="rectangle"></span><span class="lbl">Rectangle</span></button>
+            <button type="button" id="btn-edit" aria-pressed="false"><span data-icon="edit"></span><span class="lbl">Edit</span></button>
+          </div>
+          <div class="group" role="group" aria-label="Selection">
+            <button type="button" id="btn-view" title="Use the current map view as the area. Works without a mouse: pan and zoom with the keyboard first."><span data-icon="view"></span><span class="lbl">Map view</span></button>
+            <button type="button" id="btn-clear"><span data-icon="clear"></span><span class="lbl">Clear</span></button>
+          </div>
         </div>
-        <div id="map" role="application" aria-label="Interactive map. Use the buttons above to draw an area."></div>
+        <label class="switch" id="heat-switch">
+          <input type="checkbox" id="chk-grid" checked />
+          <span class="track" aria-hidden="true"></span>
+          <span>Conversion heat map</span>
+        </label>
+        <div class="legend" id="legend" aria-label="Heat map legend">
+          <div class="legend-title" id="legend-title">Converted ha per 1 km cell</div>
+          <div class="legend-ramp" aria-hidden="true"></div>
+          <div class="legend-scale"><span>0</span><span>5</span><span>20</span><span>50+</span></div>
+        </div>
         <p class="hint" id="hint" aria-live="polite"></p>
+        <button type="button" id="btn-results" class="results-btn" hidden>View results <span aria-hidden="true">&#8595;</span></button>
       </section>
       <aside id="panel" class="panel" tabindex="-1" aria-label="Summary">
         <div id="summary" aria-live="polite"></div>
-        <div class="actions">
-          <button type="button" id="btn-csv" disabled>Download CSV</button>
+        <div class="actions" id="actions">
+          <button type="button" id="btn-csv" class="primary" disabled><span data-icon="download"></span>Download CSV</button>
+          <button type="button" id="btn-share" disabled><span data-icon="share"></span>Copy link</button>
         </div>
-        <details class="about" id="about" open>
-          <summary>About this data</summary>
+        <details class="about" id="about">
+          <summary>Methods and caveats</summary>
           <div id="about-body"></div>
         </details>
+        <p class="foot">Data: AAFC Annual Crop Inventory, Open Government Licence Canada. Basemap: OpenStreetMap contributors.</p>
       </aside>
     </main>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
