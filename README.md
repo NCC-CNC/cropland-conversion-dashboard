@@ -4,8 +4,19 @@ An online dashboard to select an area on a map and quickly see how much
 natural habitat (forest, grassland, wetland) was converted to cropland, based
 on the AAFC Annual Crop Inventory.
 
-**Status:** idea and design stage; no code yet. See
+**Status:** MVP web app in [`web/`](web/README.md), developed against synthetic
+demo data until the pipeline output lands. See
 [`docs/design/00_project_brief.md`](docs/design/00_project_brief.md).
+
+## Quick start
+
+```bash
+cd web
+npm ci
+npm run dev
+```
+
+The app is deployed to GitHub Pages from `main`.
 
 ## Why
 
