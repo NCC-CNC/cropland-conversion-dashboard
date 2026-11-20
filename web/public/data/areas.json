@@ -1,0 +1,12 @@
+[
+  {
+    "id": "demo-fixture",
+    "name": "Demo fixture (SYNTHETIC data)",
+    "bbox": [
+      -106.5,
+      52.2,
+      -105.7,
+      52.7
+    ]
+  }
+]
