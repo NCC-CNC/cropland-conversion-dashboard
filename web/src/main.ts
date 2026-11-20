@@ -30,8 +30,8 @@ const modeButtons: Record<string, HTMLButtonElement> = {
 };
 
 const HINTS: Record<string, string> = {
-  polygon: 'Click to add corners. Click the first or last point to finish.',
-  rectangle: 'Click one corner, then click the opposite corner.',
+  polygon: 'Click to add corners. Double-click, or click the last point again, to finish. Esc cancels.',
+  rectangle: 'Press on one corner, drag to the opposite corner, then release. Esc cancels.',
   select: 'Drag the shape to move it, or drag a corner to reshape it.',
   static: '',
 };
@@ -95,7 +95,12 @@ function update(poly: PolygonGeometry | null): void {
 }
 
 function setMode(mode: string): void {
-  draw.setMode(mode);
+  endRectDrag(true);
+  rectArmed = mode === 'rectangle';
+  map.getCanvas().style.cursor = rectArmed ? 'crosshair' : '';
+  // Rectangles are drawn by our own press-and-drag handler, not terra-draw's
+  // click-click rectangle mode, so terra-draw stays idle while armed.
+  draw.setMode(rectArmed ? 'static' : mode);
   for (const [m, b] of Object.entries(modeButtons)) b.setAttribute('aria-pressed', String(m === mode));
   hintEl.textContent = HINTS[mode] ?? '';
 }
@@ -155,37 +160,96 @@ function setupDraw(): void {
   $('btn-view').addEventListener('click', useMapView);
 }
 
+let rectArmed = false;
+let rectStart: maplibregl.LngLat | null = null;
+let rectStartPx: { x: number; y: number } | null = null;
+
+const emptyFc = { type: 'FeatureCollection', features: [] } as GeoJSON.FeatureCollection;
+
+function rectCoords(a: maplibregl.LngLat, b: maplibregl.LngLat): number[][] {
+  const w = Math.min(a.lng, b.lng);
+  const e = Math.max(a.lng, b.lng);
+  const s = Math.min(a.lat, b.lat);
+  const n = Math.max(a.lat, b.lat);
+  return [[w, s], [e, s], [e, n], [w, n], [w, s]];
+}
+
+function setPreview(coords: number[][] | null): void {
+  const src = map.getSource('rect-preview') as maplibregl.GeoJSONSource | undefined;
+  if (!src) return;
+  src.setData(
+    coords
+      ? { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } }
+      : emptyFc,
+  );
+}
+
+function endRectDrag(cancel: boolean, end?: maplibregl.LngLat, endPx?: { x: number; y: number }): void {
+  const start = rectStart;
+  const startPx = rectStartPx;
+  rectStart = null;
+  rectStartPx = null;
+  setPreview(null);
+  map.dragPan.enable();
+  if (cancel || !start || !startPx || !end || !endPx) return;
+  // Ignore a stray click or tiny drag.
+  if (Math.abs(endPx.x - startPx.x) < 6 || Math.abs(endPx.y - startPx.y) < 6) return;
+  addRectangle(rectCoords(start, end));
+}
+
+function setupRectDrag(): void {
+  const px = (e: { point: { x: number; y: number } }) => ({ x: e.point.x, y: e.point.y });
+  const down = (e: maplibregl.MapMouseEvent | maplibregl.MapTouchEvent) => {
+    if (!rectArmed) return;
+    rectStart = e.lngLat;
+    rectStartPx = px(e);
+    map.dragPan.disable();
+  };
+  const move = (e: maplibregl.MapMouseEvent | maplibregl.MapTouchEvent) => {
+    if (rectStart) setPreview(rectCoords(rectStart, e.lngLat));
+  };
+  const up = (e: maplibregl.MapMouseEvent | maplibregl.MapTouchEvent) => {
+    if (rectStart) endRectDrag(false, e.lngLat, px(e));
+  };
+  map.on('mousedown', down);
+  map.on('touchstart', down);
+  map.on('mousemove', move);
+  map.on('touchmove', move);
+  map.on('mouseup', up);
+  map.on('touchend', up);
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && rectStart) endRectDrag(true);
+  });
+  map.addSource('rect-preview', { type: 'geojson', data: emptyFc });
+  map.addLayer({ id: 'rect-preview-fill', type: 'fill', source: 'rect-preview', paint: { 'fill-color': '#1d6fa5', 'fill-opacity': 0.15 } });
+  map.addLayer({ id: 'rect-preview-line', type: 'line', source: 'rect-preview', paint: { 'line-color': '#1d6fa5', 'line-width': 2, 'line-dasharray': [2, 1] } });
+}
+
+/** Replace any shape with this rectangle and select it for editing. */
+function addRectangle(coords: number[][]): void {
+  const r = (v: number) => Math.round(v * 1e6) / 1e6; // terra-draw rejects excess precision
+  draw.clear();
+  const feature: GeoJSONStoreFeatures = {
+    type: 'Feature',
+    properties: { mode: 'rectangle' },
+    geometry: { type: 'Polygon', coordinates: [coords.map(([x, y]) => [r(x), r(y)])] },
+  };
+  const res = draw.addFeatures([feature]);
+  if (res.some((v) => !v.valid)) console.warn('addFeatures rejected', JSON.stringify(res));
+  setMode('select');
+  update(polygonFromDraw());
+}
+
 /** Keyboard-friendly alternative to drawing: take the shape from the current map view. */
 function useMapView(): void {
   const b = map.getBounds();
   const insetX = (b.getEast() - b.getWest()) * 0.1;
   const insetY = (b.getNorth() - b.getSouth()) * 0.1;
-  const r = (v: number) => Math.round(v * 1e6) / 1e6; // terra-draw rejects excess precision
-  const w = r(b.getWest() + insetX);
-  const s = r(b.getSouth() + insetY);
-  const e = r(b.getEast() - insetX);
-  const n = r(b.getNorth() - insetY);
-  draw.clear();
-  const feature: GeoJSONStoreFeatures = {
-    type: 'Feature',
-    properties: { mode: 'rectangle' },
-    geometry: {
-      type: 'Polygon',
-      coordinates: [
-        [
-          [w, s],
-          [e, s],
-          [e, n],
-          [w, n],
-          [w, s],
-        ],
-      ],
-    },
-  };
-  const res = draw.addFeatures([feature]);
-  if (res.some((r) => !r.valid)) console.warn('addFeatures rejected', JSON.stringify(res));
-  setMode('select');
-  update(polygonFromDraw());
+  const w = b.getWest() + insetX;
+  const south = b.getSouth() + insetY;
+  const e = b.getEast() - insetX;
+  const n = b.getNorth() - insetY;
+  addRectangle([[w, south], [e, south], [e, n], [w, n], [w, south]]);
 }
 
 function setGrid(visible: boolean): void {
@@ -267,6 +331,7 @@ areaSelect.addEventListener('change', () => void loadArea(areaSelect.value));
 map.on('load', async () => {
   setupGridLayers();
   setupDraw();
+  setupRectDrag();
   try {
     areas = visibleAreas(await loadAreas());
   } catch (err) {
