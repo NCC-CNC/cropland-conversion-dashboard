@@ -58,12 +58,19 @@ export function renderEmpty(root: HTMLElement): void {
   root.replaceChildren(wrap);
 }
 
-export function renderMessage(root: HTMLElement, status: SelectionStatus): void {
+export function renderMessage(root: HTMLElement, status: SelectionStatus, onZoom?: () => void): void {
   const msg =
     status === 'outside-coverage'
-      ? 'The selected area is outside the data coverage for this region. Move the shape onto the shaded study area, or pick another area.'
+      ? 'This shape is outside the study area. Zoom to the study area, then draw again.'
       : 'No cells with natural cover were found in the selected area, so there is nothing to summarize. Try a larger shape, or turn on the heat map to see where data exists.';
-  root.replaceChildren(el('h2', 'Summary'), note(msg, 'warn'));
+  const nodes: Node[] = [el('h2', 'Summary'), note(msg, 'warn')];
+  if (status === 'outside-coverage' && onZoom) {
+    const b = el('button', 'Zoom to study area', 'linkbtn');
+    b.type = 'button';
+    b.addEventListener('click', onZoom);
+    nodes.push(b);
+  }
+  root.replaceChildren(...nodes);
 }
 
 export function renderError(root: HTMLElement, text: string): void {
@@ -120,16 +127,21 @@ export function renderSummary(
   }
 
   nodes.push(renderTabs(summary));
-  nodes.push(renderHero(iv));
-  nodes.push(renderClasses(iv));
-  nodes.push(renderChart(iv));
-  nodes.push(
+  const panel = el('div');
+  panel.id = 'tabpanel';
+  panel.setAttribute('role', 'tabpanel');
+  panel.setAttribute('aria-labelledby', `tab-${selected}`);
+  panel.append(
+    renderHero(iv),
+    renderClasses(iv),
+    renderChart(iv),
     el(
       'p',
       `Each cell is about ${(meta.cell_size_m / 1000) ** 2} km². A cell is counted when its centre falls inside your shape. Hectares are rounded and approximate.`,
       'small',
     ),
   );
+  nodes.push(panel);
   root.replaceChildren(...nodes);
 }
 
@@ -141,14 +153,20 @@ function renderTabs(summary: Summary): HTMLElement {
     const b = el('button', `${iv.from} to ${iv.to}`);
     b.type = 'button';
     b.setAttribute('role', 'tab');
+    b.id = `tab-${i}`;
+    b.setAttribute('aria-controls', 'tabpanel');
     b.setAttribute('aria-selected', String(i === selected));
     b.tabIndex = i === selected ? 0 : -1;
     b.addEventListener('click', () => pick(i));
     b.addEventListener('keydown', (e) => {
-      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-      if (!d) return;
+      const L = summary.intervals.length;
+      let next = -1;
+      if (e.key === 'ArrowRight') next = (i + 1) % L;
+      else if (e.key === 'ArrowLeft') next = (i - 1 + L) % L;
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = L - 1;
+      if (next < 0) return;
       e.preventDefault();
-      const next = (i + d + summary.intervals.length) % summary.intervals.length;
       pick(next);
       (last?.root.querySelectorAll('[role=tab]')[next] as HTMLElement | undefined)?.focus();
     });
@@ -173,7 +191,7 @@ function renderHero(iv: IntervalSummary): HTMLElement {
   const t = iv.total;
   const hero = el('section', undefined, 'hero');
   hero.setAttribute('aria-label', `Headline result, ${iv.from} to ${iv.to}`);
-  hero.append(el('div', 'Natural habitat converted to cropland', 'eyebrow'));
+  hero.append(el('div', 'Habitat converted to cropland', 'eyebrow'));
   const big = el('div', undefined, 'big');
   big.append(fmtHa(t.convertedHa), el('small', ' ha'));
   hero.append(big);
@@ -225,8 +243,8 @@ function renderClasses(iv: IntervalSummary): HTMLElement {
     th.append(cap(r.cls));
     tr.append(
       th,
-      el('td', fmtHa(r.naturalHa), 'num'),
-      el('td', fmtHa(r.convertedHa), 'num'),
+      el('td', r.naturalHa > 0 ? fmtHa(r.naturalHa) : '-', 'num'),
+      el('td', r.naturalHa > 0 ? fmtHa(r.convertedHa) : '-', 'num'),
       el('td', fmtPct(r.percent), 'num'),
     );
     tbody.append(tr);

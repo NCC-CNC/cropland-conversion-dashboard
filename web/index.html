@@ -24,22 +24,22 @@
     </header>
     <main class="layout">
       <section class="map-wrap" aria-label="Map">
-        <div id="map" role="application" aria-label="Interactive map. Use the tool buttons to draw an area."></div>
         <div class="toolbar" role="toolbar" aria-label="Map tools">
           <label class="area-pick" id="area-pick-wrap" hidden>
             <span class="sr-only">Study area</span>
             <select id="area-select"></select>
           </label>
           <div class="group" role="group" aria-label="Draw">
-            <button type="button" id="btn-polygon" aria-pressed="false"><span data-icon="polygon"></span><span class="lbl">Polygon</span></button>
-            <button type="button" id="btn-rect" aria-pressed="false"><span data-icon="rectangle"></span><span class="lbl">Rectangle</span></button>
-            <button type="button" id="btn-edit" aria-pressed="false"><span data-icon="edit"></span><span class="lbl">Edit</span></button>
+            <button type="button" id="btn-polygon" aria-label="Draw polygon" title="Draw polygon" aria-pressed="false"><span data-icon="polygon"></span><span class="lbl">Polygon</span></button>
+            <button type="button" id="btn-rect" aria-label="Draw rectangle" title="Draw rectangle" aria-pressed="false"><span data-icon="rectangle"></span><span class="lbl">Rectangle</span></button>
+            <button type="button" id="btn-edit" aria-label="Edit shape" title="Edit shape" aria-pressed="false"><span data-icon="edit"></span><span class="lbl">Edit</span></button>
           </div>
           <div class="group" role="group" aria-label="Selection">
-            <button type="button" id="btn-view" title="Use the current map view as the area. Works without a mouse: pan and zoom with the keyboard first."><span data-icon="view"></span><span class="lbl">Map view</span></button>
-            <button type="button" id="btn-clear"><span data-icon="clear"></span><span class="lbl">Clear</span></button>
+            <button type="button" id="btn-view" aria-label="Use map view as the area" title="Use map view as the area"><span data-icon="view"></span><span class="lbl">Map view</span></button>
+            <button type="button" id="btn-clear" aria-label="Clear selection" title="Clear selection"><span data-icon="clear"></span><span class="lbl">Clear</span></button>
           </div>
         </div>
+        <div id="map" role="application" aria-label="Interactive map. Use the tool buttons to draw an area."></div>
         <label class="switch" id="heat-switch">
           <input type="checkbox" id="chk-grid" checked />
           <span class="track" aria-hidden="true"></span>
