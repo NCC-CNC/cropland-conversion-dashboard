@@ -29,4 +29,5 @@ tmp/
 .claude/worktrees/
 pipeline/.venv/
 pipeline/cache/
+pipeline/exports/
 .pytest_cache/
