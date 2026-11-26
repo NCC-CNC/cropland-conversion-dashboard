@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCsv } from './csv';
 import { visibleAreas } from './areas';
+import { buildReport, coordinatesText, polygonVertices } from './report';
 import {
   bboxIntersects,
   cellsInPolygon,
@@ -203,5 +204,36 @@ describe('share links', () => {
   it('ignores malformed input', () => {
     expect(decodeShare('#a=x&s=nope')).toEqual({ area: 'x' });
     expect(decodeShare('')).toEqual({});
+  });
+});
+
+describe('report', () => {
+  const ring: PolygonGeometry = {
+    type: 'Polygon',
+    coordinates: [[[-112.123456789, 52.1], [-112, 52.1], [-112, 52.2], [-112.123456789, 52.1]]],
+  };
+  it('drops the closing point and rounds vertices', () => {
+    const v = polygonVertices(ring);
+    expect(v).toHaveLength(3);
+    expect(v[0]).toEqual({ lon: -112.12346, lat: 52.1 });
+  });
+  it('lists coordinates as lat, lon', () => {
+    expect(coordinatesText(ring).split('\n')[0]).toBe('1. 52.10000, -112.12346');
+  });
+  it('includes selection, statistics, methods and caveats', () => {
+    const md = buildReport({
+      summary: summarize(cells, meta, [0, 1]),
+      meta,
+      poly: ring,
+      areaKm2: 12.34,
+      url: 'https://example.test/#a=tiny',
+      generatedAt: '2026-11-26T00:00:00Z',
+    });
+    for (const h of ['## Selection', '## Summary statistics', '## Methods', '## Caveats', '## Data source']) {
+      expect(md).toContain(h);
+    }
+    expect(md).toContain('52.10000, -112.12346');
+    expect(md).toContain('| Total |');
+    expect(md).not.toContain('\u2014');
   });
 });

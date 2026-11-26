@@ -1,6 +1,7 @@
 import { cap, fmtHa, fmtPct } from './lib/format';
 import { MIN_RELIABLE_CELLS, type SelectionStatus } from './lib/summary';
-import type { IntervalSummary, Meta, Summary } from './lib/types';
+import { coordinatesText, polygonVertices } from './lib/report';
+import type { IntervalSummary, Meta, PolygonGeometry, Summary } from './lib/types';
 
 // Colour-blind safe hues; rows and bars are also labelled directly, so colour is not the only cue.
 const CLASS_COLOR: Record<string, string> = {
@@ -46,7 +47,7 @@ export function renderEmpty(root: HTMLElement): void {
   for (const [title, body] of [
     ['Draw on the map', 'Use Polygon or Rectangle, or frame an area and choose Map view.'],
     ['Read the summary', 'Hectares and percent of natural habitat converted, by interval.'],
-    ['Export or share', 'Download a CSV or copy a link that reopens your shape.'],
+    ['Export or share', 'Download a CSV or a methods and results report, or copy a link that reopens your shape.'],
   ]) {
     const li = el('li');
     const d = el('div');
@@ -79,6 +80,7 @@ export function renderError(root: HTMLElement, text: string): void {
 
 export interface SelectionInfo {
   areaKm2: number;
+  poly: PolygonGeometry;
 }
 
 let selected = 0;
@@ -142,7 +144,31 @@ export function renderSummary(
     ),
   );
   nodes.push(panel);
+  nodes.push(renderCoordinates(info.poly));
   root.replaceChildren(...nodes);
+}
+
+function renderCoordinates(poly: PolygonGeometry): HTMLElement {
+  const d = el('details', undefined, 'coords');
+  const n = polygonVertices(poly).length;
+  d.append(el('summary', `Selection coordinates (${n} vertices)`));
+  d.append(
+    el('p', 'WGS84, latitude then longitude, in order around the shape. Quote these to state exactly which area was summarized.', 'small'),
+  );
+  const text = coordinatesText(poly);
+  d.append(el('pre', text));
+  const b = el('button', 'Copy coordinates', 'linkbtn');
+  b.type = 'button';
+  b.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      b.textContent = 'Copied';
+    } catch {
+      b.textContent = 'Copy failed, select the text above';
+    }
+  });
+  d.append(b);
+  return d;
 }
 
 function renderTabs(summary: Summary): HTMLElement {
