@@ -22,7 +22,7 @@ Decision (2026-11-26): combine regional choice with fixed tiles.
 
 ### Layout
 
-```
+```text
 web/public/data/<dataset_id>/
   meta.json              dataset description, snapshots, targets, tile scheme
   regions.json           [{id, name, bbox}]
