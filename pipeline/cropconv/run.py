@@ -40,6 +40,11 @@ AREAS = {
     "sk-mb-estevan-melville": {
         "name": "SK/MB test area (Estevan, Melita, Russell, Melville)",
         "bbox_corners": True,  # rectangle around the four towns, see export_shapes
+        "extra_caveats": [
+            "The 2011 to 2025 interval for this area is unreliable: the 2011 map shows far more natural cover than 2016 "
+            "(about 40 percent more at the same filter settings), so much of the apparent conversion is likely a "
+            "mapping difference between years. Prefer the 2016 and 2021 baselines.",
+        ],
     },
 }
 
@@ -239,7 +244,7 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False):
         "method": describe_method(latest, params, {b: p for b, p in persist_years.items() if p}),
         "source": SOURCE,
         "generated": datetime.date.today().isoformat(),
-        "caveats": CAVEATS,
+        "caveats": CAVEATS + cfg.get("extra_caveats", []),
     }
 
     d = out_dir / area_id
