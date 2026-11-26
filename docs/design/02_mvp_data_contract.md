@@ -22,6 +22,16 @@ area without `tiled` (and without `index.json`) as before, so version 1 and 2
 areas keep working. Format and sizes: `05_regional_partitioning.md` and
 `docs/decisions/0004-tiled-cell-data.md`.
 
+A tiled area in Manitoba or Saskatchewan also has `province_summary.json`
+(`kind: province_summary`, still contract version 3, so no version bump: it is
+an added optional file that older readers ignore). It holds pre-summed totals
+per province (`MB`, `SK`, `all`), per interval, target and class, with
+percent, plus a `coverage` block of regions run and the fraction of the
+farming zone covered, and `method`, `caveats` and dates copied from
+`meta.json`. A reader must call the totals provincial only when
+`provinces.<code>.coverage.complete` is true. Shape and rules:
+`05_regional_partitioning.md` (Province summary).
+
 ## meta.json
 
 ```json

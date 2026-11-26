@@ -233,3 +233,68 @@ at 280 bytes gives about 360 MB raw and under 50 MB gzipped, well under the
 - A province summary can add `region_summary[].totals` over the regions of a
   province (the id ends in `-mb` or `-sk`) without loading tiles. Cells in no
   region are in `unassigned` only.
+
+## Province summary (decided 2026-11-26, build item 17)
+
+Owner decision: a Manitoba and Saskatchewan view shows a pre-aggregated
+summary first (fast, no tiles) and detail on request (the tile loader).
+Built by `python -m cropconv.summaries --area <id>`
+(`pipeline/cropconv/summaries.py`), and also written by
+`run --tiled` when the area has any `-mb` or `-sk` region.
+
+Output: `web/public/data/<area_id>/province_summary.json`, one file per area
+holding `MB`, `SK` and `all` together. One file rather than one per province
+because the summary is a few KB, a province card usually also wants the `all`
+row for comparison, and the coverage and method fields are shared; a second
+request per province would add latency for no saving. It is derived only from
+`index.json` `region_summary[].totals`, so it needs no tiles and reproduces the
+sum of the single `cells.json` (checked on the real run).
+
+- **Totals**: per province, per interval (for example `2011-2025`), the
+  natural hectares per class, converted hectares per target and class,
+  `converted_pct` (converted over natural, null when natural is 0) and a
+  `total` block over the classes. `all` adds the two provinces.
+- **Unassigned**: cells in no region are in no total and are counted in
+  `unassigned` (cells, hectares).
+- **Self-describing**: `method`, `source`, `caveats`, `generated`, `latest`,
+  `years` (snapshots and intervals), `natural_classes` and `targets` are copied
+  from `meta.json`, so a number can be replicated from the file alone.
+- **Coverage**: partial coverage must never be shown as a provincial total.
+  `coverage` lists the 14 farming-zone regions from `regions.json` with
+  `run` (present in this area), `cell_area_km2` against `region_area_km2`,
+  and `fraction`. A region is `covered` when its cells span at least 90% of its
+  area (`covered_fraction_min`; cells with no natural cover are not written, so
+  the cell area slightly understates ground covered). `complete` is true only
+  when every region is covered; the same block sits in each province.
+  `fraction` is the covered area over the farming-zone area. The web must call
+  the figures a provincial total only when that province's
+  `coverage.complete` is true, and otherwise name the covered regions and show
+  the fraction.
+
+```json
+{
+  "contract_version": 3, "kind": "province_summary", "area_id": "sk-mb-estevan-melville",
+  "generated": "2026-11-26", "latest": 2025,
+  "years": {"snapshots": [2011, 2016, 2021, 2025], "intervals": [{"from": 2011, "to": 2025, "years": 14}]},
+  "natural_classes": ["forest", "grassland", "wetland", "shrubland"], "targets": ["crop", "pasture", "urban", "barren"],
+  "method": "...", "source": "...", "caveats": ["..."],
+  "coverage": {"complete": false, "regions_total": 14, "regions_run": ["..."], "regions_missing": ["..."],
+               "regions_partial": ["..."], "regions_covered": [], "farming_zone_area_km2": 613563.5,
+               "covered_area_km2": 21727.1, "fraction": 0.035, "covered_fraction_min": 0.9, "note": "...",
+               "regions": [{"id": "aspen-parkland-sk", "province": "SK", "run": true, "region_area_km2": 81008.5,
+                            "cell_area_km2": 16185.6, "fraction": 0.2, "covered": false}]},
+  "unassigned": {"cells": 0, "area_ha": 0.0, "note": "..."},
+  "provinces": {
+    "MB": {"name": "Manitoba", "regions": ["..."], "cells": 4187, "area_ha": 411886.47, "coverage": {"...": "..."},
+           "intervals": {"2011-2025": {
+             "natural_ha": {"forest": 0.0}, "converted_ha": {"crop": {"forest": 0.0}},
+             "converted_pct": {"crop": {"forest": 0.0}},
+             "total": {"natural_ha": 0.0, "converted_ha": {"crop": 0.0}, "converted_pct": {"crop": 0.0}}}}},
+    "SK": {"...": "..."}, "all": {"...": "..."}
+  }
+}
+```
+
+Values are shortened. On the SK/MB test area (4 of 14 regions, 3.5% of the
+farming-zone area, `complete` false) the summary shows 21,652 cells and 0
+unassigned, and equals the single `cells.json` sums to under 1e-9 ha.

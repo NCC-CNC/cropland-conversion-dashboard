@@ -49,6 +49,18 @@ no real gain at this density. Both sizes are measured in the design note.
   real data).
 - Region membership is by cell centre and the source layers are coarse, so edge
   cells are approximate; `region` is -1 for cells in no region.
-- The web loader and a province summary are separate work (build list 17, 18).
+- The web loader is separate work (build list 18). The province summary
+  (build list 17) is done: `province_summary.json` beside `index.json`, built
+  from `region_summary` totals with a `coverage` block (see the addendum).
   Until the web app reads `index.json`, tiled areas must not be published.
 - Tile size is fixed per dataset; changing it rewrites every tile.
+
+## Addendum (2026-11-26): province summary file
+
+Owner decision: a province view with a pre-aggregated summary first and detail
+on request. `province_summary.json` is written next to `index.json` by
+`python -m cropconv.summaries --area <id>` and by `run --tiled` for areas with
+`-mb` or `-sk` regions. It adds `region_summary` totals per province and for
+both, and states which regions are covered, so partial runs are never shown as
+provincial totals. It stays at `contract_version` 3 because it is an optional
+extra file. Details: `docs/design/05_regional_partitioning.md`.
