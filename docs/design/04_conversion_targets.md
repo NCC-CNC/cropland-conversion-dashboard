@@ -69,7 +69,7 @@ any filter setting.
 - Size: four targets times four classes roughly doubles `cells.json` (3.3 MB
   for the test area today). Mitigate by writing zero arrays as `0` runs or
   omitting all-zero target/class pairs, and rely on Pages gzip. Re-check the
-  5 MB guideline in the data contract before building.
+  size guideline in the data contract (now 10 MB raw) before building.
 - Existing `--pasture-is-crop` stays as a sensitivity option only.
 
 ## Build plan (crop, pasture, urban, barren)
@@ -103,7 +103,7 @@ so the live site never sees a half-changed contract.
   shown only when that target is present.
 - Tests: mask disjointness across targets; a synthetic stack where the same
   cell flips natural to pasture, natural to crop and natural to urban; schema
-  test that old flat files still validate; size test against the 5 MB guide.
+  test that old flat files still validate; size test against the size guideline (10 MB raw).
 - Docs: update `02_mvp_data_contract.md` (nested `converted_ha`, `targets`,
   `contract_version`, rule that a missing `targets` means crop only).
 
@@ -199,8 +199,8 @@ is present.
   counted twice.
 - Size: Stettler `cells.json` is 0.40 MB raw (0.06 MB gzipped, was 0.21 MB raw)
   with all four targets. The SK/MB test area is 6.87 MB raw (0.68 MB
-  gzipped), above the 5 MB guideline in the data contract, so publishing it
-  needs the gzip argument accepted or coarser rounding.
+  gzipped), above the then 5 MB guideline in the data contract. The guideline
+  is now 10 MB raw, since Pages serves the file gzipped.
 
 ## PR B implementation notes (2026-11-26)
 
