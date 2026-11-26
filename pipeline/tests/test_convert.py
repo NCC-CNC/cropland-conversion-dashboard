@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 
 from cropconv import aggregate as agg
@@ -127,3 +128,111 @@ def test_aggregation_by_cell_and_class():
 def test_pixels_outside_grid_are_ignored():
     cells = agg.pixel_cells((2, 3), 0.0, 1000.0, 1000.0, 500.0, n_cols=1, n_rows=1)
     assert cells.tolist() == [[0, 0, -1], [0, 0, -1]]
+
+
+# ---- conversion targets ---------------------------------------------------------
+
+URBAN, BARREN = (cl.GROUPS.index(g) for g in ["urban", "barren"])
+
+
+def stack():
+    """Synthetic 6 x 6 stack (baseline natural everywhere; same latest and persistence class per column).
+
+    Columns 0-1 flip natural to crop, 2-3 natural to pasture, 4 natural to urban, 5 natural to barren.
+    """
+    nat = np.ones((6, 6), bool)
+    latest = grid(6, 6)
+    for cols, g in [((0, 2), CROP), ((2, 4), PASTURE), ((4, 5), URBAN), ((5, 6), BARREN)]:
+        latest[:, cols[0]:cols[1]] = g
+    return nat, latest.copy(), latest.copy()
+
+
+def test_masks_are_disjoint_and_cover_flips():
+    nat, latest, persist = stack()
+    masks = cv.conversion_masks(nat, latest, persist, params(persistence=True), PX_M2)
+    assert list(masks) == cl.TARGETS
+    total = sum(m.astype(int) for m in masks.values())
+    assert total.max() == 1  # no cell in two targets
+    assert masks["crop"][:, 0:2].all() and masks["crop"].sum() == 12
+    assert masks["pasture"][:, 2:4].all() and masks["pasture"].sum() == 12
+    assert masks["urban"][:, 4].all() and masks["urban"].sum() == 6
+    assert masks["barren"][:, 5].all() and masks["barren"].sum() == 6
+
+
+def test_masks_disjoint_on_random_stack():
+    rng = np.random.default_rng(0)
+    latest = rng.integers(0, len(cl.GROUPS), size=(40, 40)).astype(np.uint8)
+    nat = rng.random((40, 40)) > 0.3
+    for pic in (False, True):
+        masks = cv.conversion_masks(nat, latest, latest, params(persistence=True, pasture_is_crop=pic), PX_M2)
+        assert sum(m.astype(int) for m in masks.values()).max() <= 1
+
+
+def test_same_filters_run_per_target():
+    nat = np.ones((12, 12), bool)
+    latest = grid()
+    block(latest, 0, 1, 0, 3, URBAN)      # 3 px urban patch is dropped
+    block(latest, 5, 10, 5, 10, URBAN)    # 25 px kept
+    block(latest, 0, 1, 6, 9, PASTURE)    # 3 px pasture patch dropped
+    masks = cv.conversion_masks(nat, latest, None, params(min_patch_ha=0.5), PX_M2)
+    assert masks["urban"].sum() == 25 and masks["pasture"].sum() == 0
+
+
+def test_persistence_is_per_target():
+    # natural, then crop, then pasture: pasture only if the persistence year is also pasture
+    nat = np.ones((4, 4), bool)
+    latest = grid(4, 4, PASTURE)
+    m = cv.conversion_masks(nat, latest, grid(4, 4, CROP), params(persistence=True), PX_M2)
+    assert m["pasture"].sum() == 0 and m["crop"].sum() == 0
+    m = cv.conversion_masks(nat, latest, grid(4, 4, PASTURE), params(persistence=True), PX_M2)
+    assert m["pasture"].sum() == 16 and m["crop"].sum() == 0
+
+
+def test_pasture_is_crop_only_changes_crop():
+    nat = np.ones((4, 4), bool)
+    m = cv.conversion_masks(nat, grid(4, 4, PASTURE), None, params(pasture_is_crop=True), PX_M2)
+    assert m["crop"].sum() == 16
+    assert m["pasture"].sum() == 0  # no double counting in the sensitivity mode
+    m = cv.conversion_masks(nat, grid(4, 4, URBAN), None, params(pasture_is_crop=True), PX_M2)
+    assert m["urban"].sum() == 16 and m["crop"].sum() == 0
+
+
+def test_conversion_mask_default_target_is_crop():
+    nat, latest, _ = stack()
+    assert (cv.conversion_mask(nat, latest, None, params(), PX_M2)
+            == cv.conversion_masks(nat, latest, None, params(), PX_M2)["crop"]).all()
+
+
+def test_unknown_target():
+    with pytest.raises(ValueError):
+        cv.is_target(grid(2, 2), "greenhouse", params())
+
+
+def test_baseline_exclusion_rules():
+    nat_idx = np.ones((4, 4), dtype=np.uint8)
+    for earlier_group, dropped_by_default in [(CROP, True), (PASTURE, False), (URBAN, False), (BARREN, False)]:
+        earlier = [block(grid(4, 4), 0, 2, 0, 4, earlier_group)]
+        out = cv.clean_baseline(nat_idx, earlier, cv.FilterParams())
+        assert (out[:2].sum() == 0) == dropped_by_default, cl.GROUPS[earlier_group]
+        # switch on: pasture and urban also remove the cell, barren never does
+        out = cv.clean_baseline(nat_idx, earlier, cv.FilterParams(exclude_prior_pasture_urban=True))
+        assert (out[:2].sum() == 0) == (earlier_group != BARREN), cl.GROUPS[earlier_group]
+        # all switches off: nothing removed
+        off = cv.FilterParams(exclude_prior_crop=False, exclude_prior_pasture_urban=False)
+        assert cv.clean_baseline(nat_idx, earlier, off).all()
+
+
+def test_prior_pasture_switch_without_crop_switch():
+    nat_idx = np.ones((4, 4), dtype=np.uint8)
+    earlier = [block(grid(4, 4), 0, 2, 0, 4, CROP), block(grid(4, 4), 2, 4, 0, 4, PASTURE)]
+    p = cv.FilterParams(exclude_prior_crop=False, exclude_prior_pasture_urban=True)
+    out = cv.clean_baseline(nat_idx, earlier, p)
+    assert out[:2].all() and out[2:].sum() == 0
+
+
+def test_crop_mask_unchanged_by_other_targets():
+    """Crop output must not depend on which other targets are computed."""
+    nat, latest, persist = stack()
+    p = params(persistence=True)
+    only = cv.conversion_masks(nat, latest, persist, p, PX_M2, ["crop"])["crop"]
+    assert (only == cv.conversion_masks(nat, latest, persist, p, PX_M2)["crop"]).all()

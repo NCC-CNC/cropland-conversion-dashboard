@@ -1,8 +1,11 @@
 """Class harmonization driven by classes.csv (version controlled).
 
-Groups: natural, crop, pasture, other. Pasture (ACI 122, pasture and
-forages) is its own group so it can be switched into crop for sensitivity
-runs, but it is not crop by default.
+Groups: natural, crop, pasture, urban, barren, other. Each non-natural group
+that is a conversion target (crop, pasture, urban, barren) has the same name
+in the `target` column of classes.csv; other codes have no target. Pasture
+(ACI 122, pasture and forages) is its own group so it can be switched into
+crop for sensitivity runs, but it is not crop by default. Urban (34) and
+barren (30) are separate groups so every ACI code maps to one target only.
 """
 from __future__ import annotations
 
@@ -13,7 +16,8 @@ import numpy as np
 
 CLASSES_CSV = Path(__file__).resolve().parent.parent / "classes.csv"
 NATURAL_CLASSES = ["forest", "grassland", "wetland", "shrubland"]
-GROUPS = ["other", "natural", "crop", "pasture"]
+GROUPS = ["other", "natural", "crop", "pasture", "urban", "barren"]
+TARGETS = ["crop", "pasture", "urban", "barren"]
 
 
 def load_classes(path: Path = CLASSES_CSV) -> list[dict]:
@@ -27,6 +31,13 @@ def load_classes(path: Path = CLASSES_CSV) -> list[dict]:
             raise ValueError(f"natural_class mismatch for code {r['code']}")
         if r["natural_class"] and r["natural_class"] not in NATURAL_CLASSES:
             raise ValueError(f"bad natural class for code {r['code']}")
+        target = r["target"]
+        if target and target not in TARGETS:
+            raise ValueError(f"bad target {target!r} for code {r['code']}")
+        if target and r["group"] == "natural":
+            raise ValueError(f"natural code {r['code']} cannot have a target")
+        if target != (r["group"] if r["group"] in TARGETS else ""):
+            raise ValueError(f"target {target!r} does not match group {r['group']!r} for code {r['code']}")
     codes = [r["code"] for r in rows]
     if len(set(codes)) != len(codes):
         raise ValueError("duplicate codes in classes.csv")

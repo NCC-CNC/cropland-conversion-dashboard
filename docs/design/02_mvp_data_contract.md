@@ -23,6 +23,8 @@ Plus `web/public/data/areas.json`: `[{"id": "...", "name": "...", "bbox": [w,s,e
   "snapshots": [2011, 2016, 2021, 2024],
   "latest": 2024,
   "natural_classes": ["forest", "grassland", "wetland", "shrubland"],
+  "targets": ["crop", "pasture", "urban", "barren"],
+  "contract_version": 2,
   "intervals": [
     {"from": 2011, "to": 2024, "years": 13},
     {"from": 2016, "to": 2024, "years": 8},
@@ -37,6 +39,13 @@ Plus `web/public/data/areas.json`: `[{"id": "...", "name": "...", "bbox": [w,s,e
 
 `intervals` always compare an earlier snapshot with the latest one.
 
+`targets` lists the classes that natural cover can be converted to, a subset
+of `crop`, `pasture`, `urban`, `barren` that always includes `crop`.
+`contract_version` is 2 for the nested `converted_ha` below. A file without
+`targets` (and without `contract_version`) is version 1: `converted_ha` is the
+flat class map and means crop only. Readers must treat a missing `targets` as
+`["crop"]`, so older areas keep working.
+
 ## cells.json
 
 Columnar, one entry per grid cell that has any natural cover at any baseline
@@ -49,7 +58,11 @@ or any conversion. Cell centroids are WGS84.
   "intervals": {
     "2011-2024": {
       "natural_ha": {"forest": [..], "grassland": [..], "wetland": [..], "shrubland": [..]},
-      "converted_ha": {"forest": [..], "grassland": [..], "wetland": [..], "shrubland": [..]}
+      "converted_ha": {
+        "crop":    {"forest": [..], "grassland": [..], "wetland": [..], "shrubland": [..]},
+        "pasture": {"grassland": [..], "wetland": [..]},
+        "urban":   {"grassland": [..]}
+      }
     },
     "2016-2024": {"...": "..."},
     "2021-2024": {"...": "..."}
@@ -63,15 +76,31 @@ or any conversion. Cell centroids are WGS84.
   treats those as fallow, forage rotation or mapping error; the earliest
   baseline has no earlier snapshot, so none are excluded there). Cells are
   therefore comparable between `natural_ha` and `converted_ha`.
-- `converted_ha[c]` is hectares of class c in the baseline snapshot that are
-  crop in the latest snapshot after the noise filter (method in meta).
+- `converted_ha[t][c]` is hectares of natural class c in the baseline
+  snapshot that are in target t in the latest snapshot after the noise filter
+  (method in meta). Each target is reported on its own and there is no
+  combined total. Targets are disjoint, so a hectare counts in one target at
+  most.
+- All-zero arrays are left out: a class missing under a target, or a target
+  missing from an interval, means zero. `natural_ha` always has every class.
+- Version 1 files have the flat form `converted_ha[c]` (crop only), with every
+  class present:
+  `"converted_ha": {"forest": [..], "grassland": [..], "wetland": [..], "shrubland": [..]}`.
+- `natural_ha` also excludes cells that were pasture or urban in an earlier
+  snapshot when the pipeline ran with `--exclude-prior-pasture-urban`; `method`
+  says which exclusions were applied. Earlier barren never excludes a cell.
+- Caveats for pasture, urban and barren are in `meta.caveats` only when that
+  target is in `targets`.
 - The web app computes, for a polygon: sum of cells whose centroid lies inside,
   percent = converted / natural, annual rate = converted / years.
 
 ## Rules
 
 - No em dashes in any text field.
-- Keep `cells.json` under about 5 MB for the MVP area.
+- Keep `cells.json` under about 5 MB for the MVP area. Omitting all-zero
+  arrays helps, but four targets on a large area can exceed it: the SK/MB test
+  area is 6.9 MB raw (0.68 MB gzipped, which is what GitHub Pages serves)
+  with all four targets.
 - `snapshots` lists the baseline years and the latest year. The pipeline may
   also read the year before the latest as a persistence check; it is named in
   `method` but is not an interval baseline.

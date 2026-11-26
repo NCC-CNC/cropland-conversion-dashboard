@@ -38,7 +38,7 @@ def test_pasture_is_separate_group(luts):
     assert group_of(luts, 122) == "pasture"
 
 
-@pytest.mark.parametrize("code", [10, 20, 30, 34, 35, 60, 85])
+@pytest.mark.parametrize("code", [10, 20, 35, 60, 85])
 def test_other_codes(luts, code):
     assert group_of(luts, code) == "other"
 
@@ -74,3 +74,25 @@ def test_legend_label_check():
     swapped = list(good)
     swapped[0], swapped[1] = swapped[1], swapped[0]
     assert cl.check_legend_labels(swapped)  # order change reported
+
+
+def test_targets_map_one_group_each(luts):
+    assert group_of(luts, 34) == "urban"
+    assert group_of(luts, 30) == "barren"
+    assert group_of(luts, 35) == "other"  # greenhouse is not a target
+    rows = {r["code"]: r for r in cl.load_classes()}
+    assert rows[121]["target"] == "crop" and rows[122]["target"] == "pasture"
+    assert rows[34]["target"] == "urban" and rows[30]["target"] == "barren"
+    assert all(r["target"] == "" for r in rows.values() if r["group"] in ("natural", "other"))
+    assert {r["target"] for r in rows.values() if r["target"]} == set(cl.TARGETS)
+
+
+def test_loader_rejects_bad_target(tmp_path):
+    header = "code,label,group,target,natural_class,note\n"
+    for line in ["110,Grassland,natural,crop,grassland,\n",  # natural cannot have a target
+                 "121,Cropland,crop,urban,,\n",             # target must match the group
+                 "121,Cropland,crop,bogus,,\n"]:
+        p = tmp_path / "c.csv"
+        p.write_text(header + line, encoding="utf-8")
+        with pytest.raises(ValueError):
+            cl.load_classes(p)
