@@ -29,6 +29,10 @@
             <span class="sr-only">Study area</span>
             <select id="area-select"></select>
           </label>
+          <label class="region-pick" id="region-pick-wrap" hidden>
+            <span class="sr-only">Region</span>
+            <select id="region-select"></select>
+          </label>
           <div class="group" role="group" aria-label="Draw">
             <button type="button" id="btn-polygon" aria-label="Draw polygon" title="Draw polygon" aria-pressed="false"><span data-icon="polygon"></span><span class="lbl">Polygon</span></button>
             <button type="button" id="btn-rect" aria-label="Draw rectangle" title="Draw rectangle" aria-pressed="false"><span data-icon="rectangle"></span><span class="lbl">Rectangle</span></button>
@@ -45,12 +49,22 @@
           <span class="track" aria-hidden="true"></span>
           <span>Conversion heat map</span>
         </label>
+        <label class="switch" id="pixel-switch" hidden>
+          <input type="checkbox" id="chk-pixels" checked aria-describedby="pixel-note" />
+          <span class="track" aria-hidden="true"></span>
+          <span>30 m converted pixels</span>
+        </label>
+        <div class="legend legend-pixels" id="pixel-legend" aria-label="30 m pixel legend" hidden>
+          <div class="legend-title" id="pixel-legend-title">Converted 30 m pixels</div>
+          <div class="legend-key"><span class="swatch" id="pixel-swatch" aria-hidden="true"></span><span id="pixel-legend-text"></span></div>
+        </div>
         <div class="legend" id="legend" aria-label="Heat map legend">
           <div class="legend-title" id="legend-title">Converted ha per 1 km cell</div>
           <div class="legend-ramp" aria-hidden="true"></div>
           <div class="legend-scale"><span>0</span><span>5</span><span>20</span><span>50+</span></div>
         </div>
         <p class="hint" id="hint" aria-live="polite"></p>
+        <p class="pixel-note" id="pixel-note" aria-live="polite" hidden></p>
         <button type="button" id="btn-results" class="results-btn" hidden>View results <span aria-hidden="true">&#8595;</span></button>
       </section>
       <aside id="panel" class="panel" tabindex="-1" aria-label="Summary">

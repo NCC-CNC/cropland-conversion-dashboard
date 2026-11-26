@@ -13,10 +13,10 @@ decision are listed at the bottom until settled, then move up. Updated
 |2|Region sizing for MB and SK|#28|none|done, ecoregions chosen|
 |3|PR B: web app target support|#27|1|merged (#47), not yet checked in a browser|
 |4|Differencing warning in the global caveats|#31|none|merged (#44)|
-|5|Record noise filter sensitivity range in the report|#3|1|queued|
-|6|Show the test-area 2011 caveat prominently in the UI|#30|3|queued|
+|5|Record noise filter sensitivity range in the report|#3|1|in PR|
+|6|Show the test-area 2011 caveat prominently in the UI|#30|3|in PR|
 |8|PMTiles 30 m converted layer in the pipeline|#29|1|merged (#48)|
-|9|Map layer for 30 m pixels under a selection size threshold (PMTiles committed to the repo for the test area)|#29|8|queued|
+|9|Map layer for 30 m pixels under a selection size threshold (PMTiles committed to the repo for the test area)|#29|8|in PR|
 |11|PR C: regenerate Stettler and demo fixture, generate the tiled test area and Interlake window, publish|#30|3, 14, 18|queued|
 |12|Raise the cells.json guideline to 10 MB raw|#28|none|merged (#53)|
 |13|Second test window, Interlake MB|#28|1|merged (#51)|
@@ -24,10 +24,10 @@ decision are listed at the bottom until settled, then move up. Updated
 |15|Ecoregion boundaries (14 farming-zone pieces) in the pipeline|#28|none|merged (#49)|
 |16|Fixed 100 km tiling plus a region index (ADR 0004)|#28|15|merged (#52)|
 |17|Province summary file (MB, SK, all) with coverage flag|#28|15|merged (#54)|
-|18|Web: region picker, province card (summary first, detail on request), tile loading|#28|3, 16, 17|queued|
+|18|Web: region picker, province card (summary first, detail on request), tile loading|#28|3, 16, 17|in PR|
 |19|By-class split caveat and 2025 non-crop note|#2|none|merged (#55)|
-|20|Keyed `meta.target_caveats` instead of pairing by position|#27|1, 3|queued|
-|21|Run each farming-zone region in tiled mode (fetch rasters for all 14 regions)|#28|16|queued|
+|20|Keyed `meta.target_caveats` instead of pairing by position|#27|1, 3|in PR|
+|21|Run each farming-zone region in tiled mode (fetch rasters for all 14 regions)|#28|16|runner built (`python -m cropconv.regional`, tested, one region smoke test done); the full 14 region run (79 tiles, about 30 min) is not yet done|
 |22|Browser check of the nested and tiled data (keyboard, tabs, mobile, screen reader, map shading)|#27|11|queued|
 
 ## Settled decisions (2026-11-26)

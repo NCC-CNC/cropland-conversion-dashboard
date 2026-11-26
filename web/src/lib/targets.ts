@@ -39,12 +39,15 @@ export function isLowerConfidence(target: string): boolean {
 }
 
 /**
- * Caveat text per lower-confidence target. The pipeline appends one caveat per
- * such target to the end of `meta.caveats`, in `targets` order (see the data
- * contract), so the last k entries belong to those k targets. The wording lives
- * in the pipeline only; it is not repeated here.
+ * Caveat text per lower-confidence target. Reads the keyed `meta.target_caveats`
+ * when present. Older files lack it, so fall back to the pipeline's former
+ * convention: one caveat per such target at the end of `meta.caveats`, in
+ * `targets` order. The wording lives in the pipeline only.
  */
-export function targetCaveats(meta: Pick<Meta, 'targets' | 'caveats'>): Record<string, string> {
+export function targetCaveats(
+  meta: Pick<Meta, 'targets' | 'caveats' | 'target_caveats'>,
+): Record<string, string> {
+  if (meta.target_caveats) return { ...meta.target_caveats };
   const lower = metaTargets(meta).filter(isLowerConfidence);
   const out: Record<string, string> = {};
   if (lower.length === 0 || meta.caveats.length < lower.length) return out;

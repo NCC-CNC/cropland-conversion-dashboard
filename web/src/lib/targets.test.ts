@@ -4,6 +4,7 @@ import { normaliseCells } from './data';
 import { buildGrid } from './grid';
 import { buildReport } from './report';
 import { summarize, summarizeTargets } from './summary';
+import { intervalNote, intervalTabLabel } from './intervals';
 import { metaTargets, targetCaveats } from './targets';
 import type { Meta, PolygonGeometry, RawCells } from './types';
 
@@ -149,6 +150,14 @@ describe('targetCaveats', () => {
   it('maps the trailing caveats onto the lower-confidence targets in order', () => {
     expect(targetCaveats(multiMeta)).toEqual({ pasture: PASTURE_CAVEAT, urban: URBAN_CAVEAT });
   });
+  it('prefers the keyed target_caveats, even with extra trailing caveats', () => {
+    const keyed = {
+      ...multiMeta,
+      caveats: [...multiMeta.caveats, 'extra area caveat'],
+      target_caveats: { urban: URBAN_CAVEAT, pasture: PASTURE_CAVEAT },
+    };
+    expect(targetCaveats(keyed)).toEqual({ pasture: PASTURE_CAVEAT, urban: URBAN_CAVEAT });
+  });
   it('is empty for a crop only area', () => {
     expect(targetCaveats(baseMeta)).toEqual({});
   });
@@ -229,5 +238,34 @@ describe('buildReport with targets', () => {
     });
     expect(one).not.toContain('#### ');
     expect(one).toContain('| Crop | Total |');
+  });
+});
+
+describe('interval notes', () => {
+  const noted: Meta = {
+    ...multiMeta,
+    intervals: multiMeta.intervals.map((iv) => ({ ...iv, note: 'Unreliable baseline, use 2016.' })),
+  };
+  const cells = normaliseCells(nested);
+
+  it('finds notes by years and ignores blanks and absent notes', () => {
+    expect(intervalNote(noted, 2011, 2021)).toBe('Unreliable baseline, use 2016.');
+    expect(intervalNote(noted, 2011, 2099)).toBeUndefined();
+    expect(intervalNote(multiMeta, 2011, 2021)).toBeUndefined();
+    expect(intervalNote({ intervals: [{ from: 1, to: 2, years: 1, note: '  ' }] }, 1, 2)).toBeUndefined();
+  });
+
+  it('labels a noted tab in words, not colour only', () => {
+    expect(intervalTabLabel({ from: 2011, to: 2021 })).toBe('2011 to 2021');
+    expect(intervalTabLabel({ from: 2011, to: 2021, note: 'x' })).toBe('2011 to 2021 (caution)');
+  });
+
+  it('appears in the CSV and report only when present', () => {
+    const s = summarizeTargets(cells, noted, [0, 1]);
+    expect(buildCsv(s, noted)).toContain('Caution for 2011 to 2021: Unreliable baseline, use 2016.');
+    expect(buildCsv(s, multiMeta)).not.toContain('Caution for');
+    const input = { summaries: s, meta: noted, poly: ring, areaKm2: 1, url: 'u', generatedAt: 't' };
+    expect(buildReport(input)).toContain('**Caution:** Unreliable baseline, use 2016.');
+    expect(buildReport({ ...input, meta: multiMeta })).not.toContain('**Caution:**');
   });
 });

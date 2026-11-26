@@ -53,11 +53,39 @@ farming zone covered, and `method`, `caveats` and dates copied from
   "method": "plain-language description of class mapping and noise filter",
   "source": "AAFC Annual Crop Inventory, OGL-Canada-2.0, URL",
   "generated": "ISO date",
-  "caveats": ["list of strings shown in the UI"]
+  "caveats": ["list of strings shown in the UI"],
+  "target_caveats": {"pasture": "caveat text", "urban": "caveat text", "barren": "caveat text"},
+  "sensitivity": {
+    "target": "crop",
+    "note": "plain-language caveat",
+    "settings": [
+      {"id": "no_filter", "label": "1. No filter at all", "is_default": false,
+       "intervals": {"2011-2024": {"converted_ha": 6929.0, "natural_ha": 35300.0, "percent": 19.63}}},
+      {"id": "default", "label": "5. Default: ...", "is_default": true, "intervals": {"...": "..."}}
+    ]
+  }
 }
 ```
 
 `intervals` always compare an earlier snapshot with the latest one.
+
+Each `intervals` entry may carry an optional `note` string (additive, issue 30,
+2026-11-26): a plain-language caution for that interval, for example that the
+2011 baseline is unreliable in the SK/MB test area. The web app shows it in the
+interval tab (labelled "caution"), above the summary, in the report and in the
+CSV. Readers ignore it if absent.
+
+`sensitivity` is optional and additive (issue 3, 2026-11-26); readers must
+ignore it if absent. It records whole-window crop conversion under eight
+preset noise filter settings (ids `no_filter`, `persistence`, `patch_0_5`,
+`prior_crop`, `default`, `patch_2`, `majority`, `pasture_as_crop`), each as
+hectares converted, the setting's own baseline natural hectares and the
+percent, per interval key (`from-to`, same keys as `intervals`). Exactly one
+setting has `is_default: true`: the documented default preset, which equals
+the filters actually applied unless the run overrode them (see `method`). Only
+crop is covered. Values are totals for the whole area window, not for a drawn
+polygon, so they show the range of the filter choice, not area specific
+uncertainty.
 
 `targets` lists the classes that natural cover can be converted to, a subset
 of `crop`, `pasture`, `urban`, `barren` that always includes `crop`.
@@ -114,7 +142,12 @@ or any conversion. Cell centroids are WGS84.
   figures are lower than in earlier versions. Earlier barren never excludes a
   cell.
 - Caveats for pasture, urban and barren are in `meta.caveats` only when that
-  target is in `targets`.
+  target is in `targets`, and also in `meta.target_caveats`, an object keyed
+  by target id (only for targets present). This is additive, so
+  `contract_version` is unchanged. Readers use `target_caveats` and fall back,
+  for files without it, to pairing the last k entries of `caveats` with the
+  lower-confidence targets in `targets` order. That fallback is wrong for
+  areas that append `extra_caveats`, which the keyed form fixes.
 - The web app computes, for a polygon: sum of cells whose centroid lies inside,
   percent = converted / natural, annual rate = converted / years.
 
@@ -138,3 +171,12 @@ or any conversion. Cell centroids are WGS84.
   `method` but is not an interval baseline.
 - `area_id` is free text (the test window is `ab-parkland-stettler`); the web
   app must read it from `areas.json`, not hard-code it.
+
+## Optional 30 m pixel layer
+
+The web app looks for `web/public/data/<area_id>/converted.pmtiles` (ADR 0003).
+It is optional: when the file is missing or unreadable the pixel toggle and
+legend stay hidden and nothing else changes. The archive is PMTiles v3 vector
+tiles, zoom 11 to 14, one source layer `converted`, with properties `interval`
+(baseline year), `target` and `class`. The layer shows only when a selection is
+500 km2 or smaller and the map is at zoom 11 or closer.

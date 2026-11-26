@@ -206,5 +206,5 @@ is present.
 
 - `normaliseCells` in `web/src/lib/data.ts` turns the flat `converted_ha` into `{crop: ...}` on load. A missing `meta.targets` means crop only, and such areas render with no target tabs and no extra rows.
 - `summarize(cells, meta, indices, target)` returns the active target plus `targetTotals` for every target. `summarizeTargets` gives one summary per target for the CSV and the report. There is no combined total anywhere.
-- Lower-confidence caveats are not duplicated in the web app. The pipeline appends one caveat per pasture, urban and barren target to the end of `meta.caveats`, in `targets` order, and the web app reads the last k entries. Reordering that list in the pipeline would break the pairing; a keyed `meta.target_caveats` would be sturdier.
+- Lower-confidence caveats are not duplicated in the web app. The pipeline appends one caveat per pasture, urban and barren target to the end of `meta.caveats`, in `targets` order, and the web app reads the last k entries. This positional pairing is now only a fallback: the pipeline also writes a keyed `meta.target_caveats` (object keyed by target id) and the web app prefers it.
 - The active target is not stored in the share link. A reopened link starts on the cropland tab.

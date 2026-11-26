@@ -66,6 +66,14 @@ def check_area(meta, cells, area_id):
     assert meta["natural_classes"] == CLASSES
     assert meta["latest"] == meta["snapshots"][-1] == max(meta["snapshots"])
     assert isinstance(meta["caveats"], list) and meta["caveats"]
+    if "sensitivity" in meta:  # optional, additive (contract version 2 and 3)
+        sens = meta["sensitivity"]
+        assert sens["target"] == "crop" and sens["settings"]
+        assert sum(1 for r in sens["settings"] if r["is_default"]) == 1
+        for r in sens["settings"]:
+            assert set(r["intervals"]) <= {f"{i['from']}-{i['to']}" for i in meta["intervals"]}
+            for v in r["intervals"].values():
+                assert v["converted_ha"] >= 0 and v["natural_ha"] >= 0 and 0 <= v["percent"] <= 100
     if "targets" in meta:
         assert meta["targets"] and set(meta["targets"]) <= set(TARGETS)
         assert "crop" in meta["targets"]

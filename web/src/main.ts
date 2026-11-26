@@ -1,4 +1,5 @@
 import * as maplibregl from 'maplibre-gl';
+import { PMTiles, Protocol } from 'pmtiles';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   TerraDraw,
@@ -11,11 +12,30 @@ import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import './style.css';
 import { visibleAreas } from './lib/areas';
 import { buildCsv } from './lib/csv';
-import { loadAreas, loadCells, loadMeta } from './lib/data';
+import { loadAreas, loadCells, loadIndex, loadMeta, loadProvinceSummary, loadTiles } from './lib/data';
 import { buildGrid } from './lib/grid';
 import { cellsInPolygon, polygonBBox, selectionStatus, summarize, summarizeTargets } from './lib/summary';
 import { DEFAULT_TARGET, targetLabel } from './lib/targets';
-import type { AreaEntry, Cells, Meta, PolygonGeometry, Summary } from './lib/types';
+import {
+  PIXEL_MAX_ZOOM,
+  PIXEL_MIN_ZOOM,
+  PIXEL_SOURCE_LAYER,
+  pixelColor,
+  pixelFilter,
+  pixelNote,
+  pixelState,
+  pmtilesPath,
+} from './lib/pixels';
+import { buildProvinceCard, provinceCodes } from './lib/province';
+import {
+  cellsOfRegion,
+  regionLabel,
+  regionOptions,
+  tilesForBBox,
+  tilesForRegion,
+  unionBBox,
+} from './lib/tiles';
+import type { AreaEntry, AreaIndex, BBox, Cells, Meta, PolygonGeometry, ProvinceSummary, Summary, TileEntry } from './lib/types';
 import { polygonAreaKm2 } from './lib/geo';
 import { buildReport } from './lib/report';
 import { decodeShare, encodeShare } from './lib/share';
@@ -27,8 +47,11 @@ import {
   renderLoading,
   renderMessage,
   renderSummary,
+  onIntervalPick,
   resetInterval,
+  selectedInterval,
 } from './render';
+import { renderProvinceCard } from './renderProvince';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const summaryEl = $('summary');
@@ -96,7 +119,19 @@ let areas: AreaEntry[] = [];
 let currentPoly: PolygonGeometry | null = null;
 let selectedIdx: number[] = [];
 let activeTarget = DEFAULT_TARGET;
+/** Tiled areas (contract version 3) only: the index, the optional province summary and the heat map cells. */
+let index: AreaIndex | null = null;
+let provinceSummary: ProvinceSummary | null = null;
+let provinceCode = 'all';
+/** Cells behind the heat map. Same as `cells` for a flat area; for a tiled area, the region or detail loaded. */
+let gridCells: Cells | null = null;
+let updateToken = 0;
+/** Most tiles loaded for a province detail view before asking the user to pick a region. */
+const MAX_DETAIL_TILES = 12;
+const regionSelect = $<HTMLSelectElement>('region-select');
 
+const pmProtocol = new Protocol();
+maplibregl.addProtocol('pmtiles', pmProtocol.tile);
 maplibregl.setWorkerUrl(`${import.meta.env.BASE_URL}maplibre/maplibre-gl-worker.mjs`);
 
 const map = new maplibregl.Map({
@@ -132,26 +167,71 @@ function polygonFromDraw(): PolygonGeometry | null {
   return last ? (last.geometry as PolygonGeometry) : null;
 }
 
-function update(poly: PolygonGeometry | null): void {
-  if (!meta || !cells) return;
-  syncHash(poly);
-  resultsBtn.hidden = !poly;
-  if (!poly) {
-    summary = null;
-    csvBtn.disabled = true;
-    reportBtn.disabled = true;
-    shareBtn.disabled = true;
+function disableExports(): void {
+  csvBtn.disabled = true;
+  reportBtn.disabled = true;
+  shareBtn.disabled = true;
+}
+
+function regionName(id: string): string {
+  return index?.region_summary.find((r) => r.id === id)?.name ?? id;
+}
+
+function showProvinceOrEmpty(): void {
+  const model = provinceSummary ? buildProvinceCard(provinceSummary, provinceCode, regionName) : null;
+  if (!provinceSummary || !model) {
     renderEmpty(summaryEl);
     return;
   }
+  renderProvinceCard(summaryEl, model, {
+    options: provinceCodes(provinceSummary).map((c) => ({ code: c, name: c === 'all' ? 'Manitoba and Saskatchewan' : provinceSummary!.provinces[c].name })),
+    onProvince: (c) => {
+      provinceCode = c;
+      showProvinceOrEmpty();
+    },
+    onDetail: (c) => void showProvinceDetail(c),
+  });
+}
+
+async function update(poly: PolygonGeometry | null): Promise<void> {
+  if (!meta) return;
+  const token = ++updateToken;
+  syncHash(poly);
+  resultsBtn.hidden = !poly;
+  selectionKm2 = poly ? polygonAreaKm2(poly) : null;
+  if (!poly) {
+    summary = null;
+    refreshPixels();
+    disableExports();
+    showProvinceOrEmpty();
+    return;
+  }
+  if (index) {
+    // Tiled area: fetch only the tiles under the shape, then sum as for a flat area.
+    const tiles = tilesForBBox(index, polygonBBox(poly));
+    try {
+      if (tiles.length > 0) setHint(`Loading tile data (0 of ${tiles.length})`);
+      const merged = await loadTiles(meta.area_id, tiles, (d, n) => {
+        if (token === updateToken) setHint(`Loading tile data (${d} of ${n})`);
+      });
+      if (token !== updateToken) return;
+      cells = merged;
+      setHint('');
+    } catch (err) {
+      if (token !== updateToken) return;
+      setHint('');
+      disableExports();
+      renderError(summaryEl, `Could not load map data for this shape. ${(err as Error).message}`);
+      return;
+    }
+  }
+  if (!cells) return;
   const idx = cellsInPolygon(cells, poly);
   const status = selectionStatus(idx.length, polygonBBox(poly), meta.bbox);
   selectedIdx = idx;
   summary = summarize(cells, meta, idx, activeTarget);
   if (status === 'outside-coverage' || status === 'no-natural-cells') {
-    csvBtn.disabled = true;
-    reportBtn.disabled = true;
-    shareBtn.disabled = true;
+    disableExports();
     setHint('');
     renderMessage(summaryEl, status, zoomToArea);
     return;
@@ -160,6 +240,7 @@ function update(poly: PolygonGeometry | null): void {
   reportBtn.disabled = false;
   shareBtn.disabled = false;
   currentPoly = poly;
+  refreshPixels();
   renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly), poly, onTarget: setTarget });
 }
 
@@ -185,7 +266,7 @@ function keepOnly(id: string | number): void {
 function clearAll(): void {
   draw.clear();
   setMode('static');
-  update(null);
+  void update(null);
 }
 
 function setupDraw(): void {
@@ -210,11 +291,11 @@ function setupDraw(): void {
       setMode('select');
       draw.selectFeature(id);
     }
-    update(polygonFromDraw());
+    void update(polygonFromDraw());
   });
   draw.on('change', (_ids, type) => {
-    if (type === 'update' && draw.getMode() === 'select') update(polygonFromDraw());
-    if (type === 'delete' && !polygonFromDraw() && draw.getMode() === 'select') update(null);
+    if (type === 'update' && draw.getMode() === 'select') void update(polygonFromDraw());
+    if (type === 'delete' && !polygonFromDraw() && draw.getMode() === 'select') void update(null);
   });
   modeButtons.polygon.addEventListener('click', () => setMode('polygon'));
   modeButtons.rectangle.addEventListener('click', () => setMode('rectangle'));
@@ -321,7 +402,7 @@ function addRectangle(coords: number[][], mode: 'rectangle' | 'polygon' = 'recta
   const res = draw.addFeatures([feature]);
   if (res.some((v) => !v.valid)) console.warn('addFeatures rejected', JSON.stringify(res));
   setMode('select');
-  update(polygonFromDraw());
+  void update(polygonFromDraw());
 }
 
 /** Keyboard-friendly alternative to drawing: take the shape from the current map view. */
@@ -374,20 +455,180 @@ function setLegendTitle(): void {
 
 /** Switch the active conversion target: reshade the map, then recompute and redraw the summary. */
 function setTarget(target: string): void {
-  if (!meta || !cells || target === activeTarget) return;
+  if (!meta || (!cells && !index) || target === activeTarget) return;
   activeTarget = target;
-  (map.getSource('grid') as maplibregl.GeoJSONSource).setData(buildGrid(cells, meta, activeTarget).data);
+  if (gridCells) (map.getSource('grid') as maplibregl.GeoJSONSource).setData(buildGrid(gridCells, meta, activeTarget).data);
   setLegendTitle();
-  update(currentPoly);
+  refreshPixels();
+  void update(currentPoly);
+}
+
+/** 30 m converted-pixel layer (ADR 0003). Needs a PMTiles file per area; absent today on the live site. */
+const PIXEL_SRC = 'pixels';
+const PIXEL_LYR = 'pixels-fill';
+let pixelsAvailable = false;
+let selectionKm2: number | null = null;
+let pixelToken = 0;
+const pixelSwitch = $('pixel-switch');
+const pixelChk = $<HTMLInputElement>('chk-pixels');
+const pixelNoteEl = $('pixel-note');
+const pixelLegend = $('pixel-legend');
+
+function removePixelLayer(): void {
+  if (map.getLayer(PIXEL_LYR)) map.removeLayer(PIXEL_LYR);
+  if (map.getSource(PIXEL_SRC)) map.removeSource(PIXEL_SRC);
+}
+
+/** Probe for the area's PMTiles file and add the layer if it is a real archive. Any failure means no layer. */
+async function setupPixels(areaId: string): Promise<void> {
+  const token = ++pixelToken;
+  pixelsAvailable = false;
+  removePixelLayer();
+  try {
+    const url = new URL(`${import.meta.env.BASE_URL}data/${pmtilesPath(areaId)}`, location.href).href;
+    const archive = new PMTiles(url);
+    await archive.getHeader(); // throws for a missing file or an HTML fallback page
+    if (token !== pixelToken) return;
+    pmProtocol.add(archive);
+    map.addSource(PIXEL_SRC, {
+      type: 'vector',
+      url: `pmtiles://${url}`,
+      minzoom: PIXEL_MIN_ZOOM,
+      maxzoom: PIXEL_MAX_ZOOM,
+    });
+    map.addLayer({
+      id: PIXEL_LYR,
+      type: 'fill',
+      source: PIXEL_SRC,
+      'source-layer': PIXEL_SOURCE_LAYER,
+      minzoom: PIXEL_MIN_ZOOM,
+      layout: { visibility: 'none' },
+      paint: { 'fill-color': pixelColor(activeTarget), 'fill-opacity': 0.85, 'fill-antialias': false },
+    });
+    pixelsAvailable = true;
+  } catch {
+    pixelsAvailable = false;
+  }
+  refreshPixels();
+}
+
+/** Apply the current target, interval, selection size and toggle to the pixel layer, legend and note. */
+function refreshPixels(): void {
+  pixelSwitch.hidden = !pixelsAvailable;
+  const state = pixelState({
+    available: pixelsAvailable,
+    enabled: pixelChk.checked,
+    areaKm2: selectionKm2,
+    zoom: map.getZoom(),
+  });
+  const note = pixelNote(state);
+  pixelNoteEl.textContent = note;
+  pixelNoteEl.hidden = !note;
+  const visible = state === 'visible';
+  pixelLegend.hidden = !visible;
+  if (!pixelsAvailable || !map.getLayer(PIXEL_LYR)) return;
+  map.setLayoutProperty(PIXEL_LYR, 'visibility', visible ? 'visible' : 'none');
+  if (!visible || !meta) return;
+  const iv = meta.intervals[selectedInterval()] ?? meta.intervals[0];
+  if (iv) map.setFilter(PIXEL_LYR, pixelFilter(iv.from, activeTarget) as maplibregl.FilterSpecification);
+  const color = pixelColor(activeTarget);
+  map.setPaintProperty(PIXEL_LYR, 'fill-color', color);
+  $('pixel-swatch').style.background = color;
+  $('pixel-legend-text').textContent =
+    `${targetLabel(activeTarget)}, ${iv ? `${iv.from} to ${iv.to}` : ''}. Pixel detail; totals use the 1 km grid.`;
+}
+
+const emptyGrid = { type: 'FeatureCollection', features: [] } as GeoJSON.FeatureCollection;
+
+function fitBox(box: BBox, duration = 0): void {
+  map.fitBounds([[box[0], box[1]], [box[2], box[3]]], { padding: 30, duration });
+}
+
+function showGrid(c: Cells | null): void {
+  if (!meta) return;
+  gridCells = c;
+  const src = map.getSource('grid') as maplibregl.GeoJSONSource;
+  if (!c) {
+    src.setData(emptyGrid);
+    return;
+  }
+  const grid = buildGrid(c, meta, activeTarget);
+  src.setData(grid.data);
+  if (grid.drawn < grid.total) {
+    setHint(`Grid overlay thinned to ${grid.drawn} of ${grid.total} cells for speed. Summaries use every cell.`, 6000);
+  }
+}
+
+/** Load tiles for the heat map and zoom to them. Stale loads (the user moved on) are dropped. */
+let detailToken = 0;
+async function loadDetail(tiles: TileEntry[], keep?: (c: Cells) => Cells): Promise<void> {
+  if (!meta || !index || tiles.length === 0) return;
+  const token = ++detailToken;
+  try {
+    setHint(`Loading tile data (0 of ${tiles.length})`);
+    let c = await loadTiles(meta.area_id, tiles, (d, n) => {
+      if (token === detailToken) setHint(`Loading tile data (${d} of ${n})`);
+    });
+    if (token !== detailToken) return;
+    if (keep) c = keep(c);
+    setHint('');
+    showGrid(c);
+    const box = unionBBox(tiles);
+    if (box) fitBox(box, 400);
+  } catch (err) {
+    if (token !== detailToken) return;
+    setHint('');
+    renderError(summaryEl, `Could not load map data. ${(err as Error).message}`);
+  }
+}
+
+async function pickRegion(regionId: string): Promise<void> {
+  if (!index) return;
+  if (!regionId) {
+    detailToken++;
+    showGrid(null);
+    if (meta) fitBox(meta.bbox, 400);
+    return;
+  }
+  const idx = index;
+  await loadDetail(tilesForRegion(idx, regionId), (c) => cellsOfRegion(c, idx, regionId));
+}
+
+async function showProvinceDetail(code: string): Promise<void> {
+  if (!index || !provinceSummary) return;
+  const entry = provinceSummary.provinces[code];
+  const ids = entry ? entry.regions.filter((r) => provinceSummary!.coverage.regions_run.includes(r)) : [];
+  const want = new Set(ids.flatMap((r) => tilesForRegion(index!, r).map((t) => t.id)));
+  const tiles = index.tiles.filter((t) => want.has(t.id));
+  if (tiles.length > MAX_DETAIL_TILES) {
+    setHint(`That is ${tiles.length} tiles. Pick one region from the region list to load map detail.`, 6000);
+    return;
+  }
+  regionSelect.value = '';
+  await loadDetail(tiles);
 }
 
 async function loadArea(id: string): Promise<void> {
   renderLoading(summaryEl);
+  index = null;
+  provinceSummary = null;
+  cells = null;
+  gridCells = null;
+  detailToken++;
+  $('region-pick-wrap').hidden = true;
   try {
-    [meta, cells] = await Promise.all([loadMeta(id), loadCells(id)]);
+    meta = await loadMeta(id);
+    if (meta.tiled) {
+      index = await loadIndex(id);
+      if (!index) throw new Error('This area is tiled but its index.json could not be read.');
+      provinceSummary = await loadProvinceSummary(id);
+    } else {
+      cells = await loadCells(id);
+    }
   } catch (err) {
     meta = null;
     cells = null;
+    index = null;
     renderError(summaryEl, `Could not load data for this area. ${(err as Error).message}`);
     return;
   }
@@ -396,20 +637,21 @@ async function loadArea(id: string): Promise<void> {
   resetInterval();
   activeTarget = DEFAULT_TARGET;
   renderAbout(aboutBody, meta);
-  const grid = buildGrid(cells, meta, activeTarget);
-  (map.getSource('grid') as maplibregl.GeoJSONSource).setData(grid.data);
-  map.fitBounds(
-    [
-      [meta.bbox[0], meta.bbox[1]],
-      [meta.bbox[2], meta.bbox[3]],
-    ],
-    { padding: 30, duration: 0 },
-  );
-  if (grid.drawn < grid.total) {
-    setHint(`Grid overlay thinned to ${grid.drawn} of ${grid.total} cells for speed. Summaries use every cell.`, 6000);
+  if (index) {
+    regionSelect.replaceChildren(new Option('All regions (summary)', ''));
+    for (const r of regionOptions(index)) regionSelect.append(new Option(regionLabel(r), r.id));
+    regionSelect.value = '';
+    $('region-pick-wrap').hidden = false;
+    provinceCode = provinceSummary && provinceCodes(provinceSummary).includes('all') ? 'all' : (provinceSummary ? provinceCodes(provinceSummary)[0] : 'all');
+    showGrid(null);
+    fitBox(meta.bbox);
+  } else if (cells) {
+    showGrid(cells);
+    fitBox(meta.bbox);
   }
   setLegendTitle();
-  update(null);
+  void setupPixels(id);
+  void update(null);
 }
 
 shareBtn.addEventListener('click', async () => {
@@ -455,7 +697,12 @@ $<HTMLInputElement>('chk-grid').addEventListener('change', (e) =>
   setGrid((e.target as HTMLInputElement).checked),
 );
 
+pixelChk.addEventListener('change', refreshPixels);
+onIntervalPick(refreshPixels);
+map.on('zoomend', refreshPixels);
+
 areaSelect.addEventListener('change', () => void loadArea(areaSelect.value));
+regionSelect.addEventListener('change', () => void pickRegion(regionSelect.value));
 
 renderLoading(summaryEl);
 

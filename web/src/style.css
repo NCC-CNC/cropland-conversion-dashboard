@@ -132,6 +132,17 @@ button { cursor: pointer; }
 .legend-ramp { height: 10px; border-radius: 3px; background: linear-gradient(90deg, #ffe08a 0%, #f4a259 25%, #e0702f 55%, #b13a0b 100%); }
 .legend-scale { display: flex; justify-content: space-between; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
 
+.switch[hidden], .pixel-note[hidden] { display: none; }
+#pixel-switch { bottom: 96px; }
+.legend-pixels { bottom: 150px; }
+.legend-key { display: flex; align-items: center; gap: var(--s2); }
+.legend-key .swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.35); flex: none; }
+.pixel-note {
+  position: absolute; z-index: 5; left: var(--s3); bottom: 142px; max-width: 280px; margin: 0;
+  padding: var(--s2) var(--s3); background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-md); font-size: 0.8rem;
+}
+
 .hint {
   position: absolute; z-index: 5; left: 50%; transform: translateX(-50%); top: 64px; max-width: min(560px, calc(100% - 32px));
   margin: 0; padding: var(--s2) var(--s4); font-size: 0.85rem; text-align: center;
@@ -291,6 +302,9 @@ tr.total th, tr.total td { font-weight: 700; border-top: 2px solid var(--border)
   .pill { font-size: 0.66rem; padding: 2px 8px; }
   .results-btn:not([hidden]) { display: inline-flex; align-items: center; gap: 6px; }
   .switch { bottom: 108px; }
+  #pixel-switch { bottom: 156px; }
+  .pixel-note { bottom: 204px; max-width: calc(100% - 160px); }
+  .legend-pixels { top: 252px; bottom: auto; }
   .toolbar { right: var(--s3); top: var(--s2); }
   .group button .lbl { display: none; }
   .group button { padding: 0 var(--s3); min-width: 44px; justify-content: center; }
@@ -308,3 +322,10 @@ tr.total th, tr.total td { font-weight: 700; border-top: 2px solid var(--border)
 .coords { margin-top: var(--s4); border-top: 1px solid var(--border); padding-top: var(--s2); }
 .coords summary { cursor: pointer; font-weight: 600; min-height: 40px; display: flex; align-items: center; }
 .coords pre { max-height: 180px; overflow: auto; margin: var(--s2) 0; padding: var(--s2) var(--s3); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+/* Province card */
+.province-pick { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3); font-weight: 600; }
+.province-pick select { min-height: 40px; padding: 0 var(--s3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.prov-interval h3 { margin: var(--s4) 0 var(--s1); font-size: 1rem; }
+.prov-interval th[scope='row'] { text-align: left; font-weight: 500; }
+.region-pick select { min-height: 46px; max-width: 260px; padding: 0 var(--s3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); }

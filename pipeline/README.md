@@ -12,6 +12,7 @@ python3 -m venv .venv && . .venv/bin/activate   # or: uv venv .venv
 pip install -r requirements.txt                  # or: uv pip install -r requirements.txt
 python -m cropconv.run                           # fetch (cached), compute, write JSON
 python -m cropconv.run --sensitivity             # also print the filter sensitivity table
+python -m cropconv.run --no-sensitivity          # skip the meta.json sensitivity block (8 extra crop passes)
 python -m pytest                                 # tests
 ```
 
@@ -21,7 +22,7 @@ full run takes about 30 seconds. Never commit rasters.
 
 Useful flags: `--latest YEAR`, `--min-patch-ha X`, `--no-persistence`,
 `--majority`, `--keep-prior-crop`, `--keep-prior-pasture-urban`, `--pasture-is-crop`,
-`--targets crop,pasture,urban,barren`, `--out DIR`, `--tiled [KM]` (write
+`--no-sensitivity`, `--targets crop,pasture,urban,barren`, `--out DIR`, `--tiled [KM]` (write
 100 km tiles and `index.json` instead of `cells.json`, with each cell tagged
 by region; see `docs/design/05_regional_partitioning.md`).
 
@@ -209,6 +210,10 @@ from `python -m cropconv.run --sensitivity`:
 |7. As default, plus 3x3 majority filter|2,687 (7.6%)|930 (3.1%)|426 (1.6%)|
 |8. As default, pasture/forage counted as crop|7,770 (22.0%)|3,815 (12.6%)|1,871 (7.2%)|
 
+Every run also writes this table for crop to `meta.json` under `sensitivity`
+(whole window totals, additive field, see the data contract), so the range is
+published with the data. `--sensitivity` only prints it.
+
 Without any filter, the raw "natural to crop" transition is 20 to 25 percent of
 natural cover, which is mostly noise. Persistence removes about half of it,
 the patch size and prior use filters remove a further 20 to 75 percent (the
@@ -224,7 +229,7 @@ spike's validation step, issue 6).
 ```text
 pipeline/
   classes.csv        class mapping (version controlled)
-  cropconv/          fetch, classes, convert, aggregate, run, regions, tiling
+  cropconv/          fetch, classes, convert, aggregate, run, regions, tiling, regional
   tests/             pytest: mapping, conversion logic, output schema
   requirements.txt
   cache/             downloaded rasters (gitignored)
@@ -287,6 +292,51 @@ conversion is about 500 ha per year in both the 2011 and 2016 intervals, so no
 extra caveat is attached. The split between forest and shrubland does shift
 between years (forest 32,000 ha in 2011 against 147,000 ha in 2021, shrubland
 the reverse), so by-class results here carry the general mapping caveat.
+
+## All 14 farming-zone regions (tiled, per region)
+
+```bash
+python -m cropconv.regional --list                 # tiles per region, 79 distinct in all
+python -m cropconv.regional --dry-run              # plan: tiles done and to do
+python -m cropconv.regional --regions southwest-manitoba-uplands-mb --out /tmp/data   # one region
+python -m cropconv.regional --drop-rasters         # all 14 regions, deleting rasters as it goes
+```
+
+Writes the tiled area `mb-sk-farming-zone` (`meta.json`, `index.json`, `tiles/`,
+`province_summary.json`, `areas.json` entry) for the chosen regions, default all 14 from
+`web/public/data/regions.json`. Never commit its output or caches until the web app and
+a coverage check say so (ADR 0004).
+
+- The unit of work is a tile of the fixed 100 km grid (ADR 0004), not a region. The 79
+  tiles that touch any region are each fetched (one 102 km raster per year, 5 years),
+  converted and aggregated alone, so memory stays near 0.7 GB however many regions run.
+  The whole-region approach that was killed for memory needed several GB per year.
+- Halo: each raster extends 1 km past the tile and only cells inside the tile are
+  written. That makes the 0.5 ha patch filter and the 3x3 majority filter give the same
+  cell values as one huge window (tested against a single big window on synthetic data).
+- Resume: a tile's result is cached as `cache/regional/<key>/<col>_<row>.npz`, where the
+  key hashes years, filters, targets and tile size, and rasters are cached by `fetch.py`.
+  Stop and rerun at will; a failed download leaves finished tiles in place. Changing a
+  filter flag starts a fresh set of results. `--limit N` runs the first N tiles.
+- Region selection: `--regions a,b` picks regions. Cells outside the chosen regions are
+  not written (a tile on a region edge holds its neighbours' cells), so each region in the
+  index is complete and `province_summary.json` coverage is honest. Running more regions
+  later only does the missing tiles and rewrites the outputs.
+- `--sensitivity` adds the `meta.json` sensitivity block (whole selected area, cell sums
+  across tiles). It is off by default here because it costs about 7 s extra per tile
+  (12 s against 5 s on one tile). Without it `meta.json` has no `sensitivity` block, which
+  is optional in the contract.
+- `--drop-rasters` deletes a tile's rasters once its result is cached. Rasters are about
+  58 MB per tile (five years), 4.6 GB for all 79 if kept. `--cache-dir` moves rasters and
+  results out of the OneDrive folder. `--workers N` sets parallel downloads (default 2).
+- Tiles of other tile sizes work (`--tiled KM`) but 100 km is what the web app expects.
+
+Measured (southwest-manitoba-uplands-mb, 3 tiles, 2 workers, one-year-at-a-time
+read): 69 s wall, 0.68 GB peak, 5 s compute per tile, about 3.3 s per raster
+download. For all 79 tiles that is about 25 to 30 minutes (downloads dominate) and
+under 1 GB peak; with `--sensitivity` about 10 minutes more. These are
+estimates from one small region, and server speed varies. The service may throttle a long
+run, in which case rerun: finished tiles are kept.
 
 ## 30 m converted-pixel tiles (PMTiles)
 

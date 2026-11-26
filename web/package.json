@@ -20,6 +20,7 @@
     "@turf/boolean-point-in-polygon": "7.4.0",
     "@turf/helpers": "7.4.0",
     "maplibre-gl": "6.16.0",
+    "pmtiles": "4.5.0",
     "terra-draw": "1.39.0",
     "terra-draw-maplibre-gl-adapter": "1.5.0"
   },

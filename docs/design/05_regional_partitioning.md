@@ -298,3 +298,14 @@ sum of the single `cells.json` (checked on the real run).
 Values are shortened. On the SK/MB test area (4 of 14 regions, 3.5% of the
 farming-zone area, `complete` false) the summary shows 21,652 cells and 0
 unassigned, and equals the single `cells.json` sums to under 1e-9 ha.
+
+## Running all 14 regions (build item 21)
+
+`python -m cropconv.regional` runs the farming-zone regions per 100 km tile, not per
+region, so memory does not grow with the area: each of the 79 tiles that touch a region
+is fetched with a 1 km halo, converted, aggregated and cached on its own, then tiles,
+`index.json`, `meta.json` and `province_summary.json` are assembled from the cache.
+Cells outside the selected regions are dropped so every region in the index is complete.
+Usage, resume behaviour and measured cost are in `pipeline/README.md`. The sensitivity
+block is off by default there (`--sensitivity` adds it at about 7 s per tile); `cropconv.run`
+has `--no-sensitivity` for the same reason.
