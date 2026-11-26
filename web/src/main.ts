@@ -16,6 +16,7 @@ import { buildGrid } from './lib/grid';
 import { cellsInPolygon, polygonBBox, selectionStatus, summarize } from './lib/summary';
 import type { AreaEntry, Cells, Meta, PolygonGeometry, Summary } from './lib/types';
 import { polygonAreaKm2 } from './lib/geo';
+import { buildReport } from './lib/report';
 import { decodeShare, encodeShare } from './lib/share';
 import { ICONS, LOGO } from './icons';
 import {
@@ -33,6 +34,7 @@ const summaryEl = $('summary');
 const aboutBody = $('about-body');
 const hintEl = $('hint');
 const csvBtn = $<HTMLButtonElement>('btn-csv');
+const reportBtn = $<HTMLButtonElement>('btn-report');
 const shareBtn = $<HTMLButtonElement>('btn-share');
 const legendEl = $('legend');
 const resultsBtn = $('btn-results');
@@ -90,6 +92,7 @@ let meta: Meta | null = null;
 let cells: Cells | null = null;
 let summary: Summary | null = null;
 let areas: AreaEntry[] = [];
+let currentPoly: PolygonGeometry | null = null;
 
 maplibregl.setWorkerUrl(`${import.meta.env.BASE_URL}maplibre/maplibre-gl-worker.mjs`);
 
@@ -133,6 +136,7 @@ function update(poly: PolygonGeometry | null): void {
   if (!poly) {
     summary = null;
     csvBtn.disabled = true;
+    reportBtn.disabled = true;
     shareBtn.disabled = true;
     renderEmpty(summaryEl);
     return;
@@ -142,14 +146,17 @@ function update(poly: PolygonGeometry | null): void {
   summary = summarize(cells, meta, idx);
   if (status === 'outside-coverage' || status === 'no-natural-cells') {
     csvBtn.disabled = true;
+    reportBtn.disabled = true;
     shareBtn.disabled = true;
     setHint('');
     renderMessage(summaryEl, status, zoomToArea);
     return;
   }
   csvBtn.disabled = false;
+  reportBtn.disabled = false;
   shareBtn.disabled = false;
-  renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly) });
+  currentPoly = poly;
+  renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly), poly });
 }
 
 function setMode(mode: string): void {
@@ -395,16 +402,33 @@ shareBtn.addEventListener('click', async () => {
   }
 });
 
-csvBtn.addEventListener('click', () => {
-  if (!summary || !meta) return;
-  const blob = new Blob([buildCsv(summary, meta)], { type: 'text/csv;charset=utf-8' });
+function download(text: string, type: string, name: string): void {
+  const blob = new Blob([text], { type });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `conversion-summary-${meta.area_id}.csv`;
+  a.download = name;
   document.body.append(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(a.href);
+}
+
+csvBtn.addEventListener('click', () => {
+  if (!summary || !meta) return;
+  download(buildCsv(summary, meta), 'text/csv;charset=utf-8', `conversion-summary-${meta.area_id}.csv`);
+});
+
+reportBtn.addEventListener('click', () => {
+  if (!summary || !meta || !currentPoly) return;
+  const md = buildReport({
+    summary,
+    meta,
+    poly: currentPoly,
+    areaKm2: polygonAreaKm2(currentPoly),
+    url: location.href,
+    generatedAt: new Date().toISOString(),
+  });
+  download(md, 'text/markdown;charset=utf-8', `conversion-report-${meta.area_id}.md`);
 });
 
 $<HTMLInputElement>('chk-grid').addEventListener('change', (e) =>

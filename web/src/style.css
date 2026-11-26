@@ -291,3 +291,7 @@ tr.total th, tr.total td { font-weight: 700; border-top: 2px solid var(--border)
   th, td { padding: 7px 3px; }
   table { font-size: 0.82rem; }
 }
+
+.coords { margin-top: var(--s4); border-top: 1px solid var(--border); padding-top: var(--s2); }
+.coords summary { cursor: pointer; font-weight: 600; min-height: 40px; display: flex; align-items: center; }
+.coords pre { max-height: 180px; overflow: auto; margin: var(--s2) 0; padding: var(--s2) var(--s3); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
