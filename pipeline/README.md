@@ -20,7 +20,8 @@ into `pipeline/cache/`, which is gitignored. Later runs reuse the cache. A
 full run takes about 30 seconds. Never commit rasters.
 
 Useful flags: `--latest YEAR`, `--min-patch-ha X`, `--no-persistence`,
-`--majority`, `--keep-prior-crop`, `--pasture-is-crop`, `--out DIR`.
+`--majority`, `--keep-prior-crop`, `--exclude-prior-pasture-urban`, `--pasture-is-crop`,
+`--targets crop,pasture,urban,barren`, `--out DIR`.
 
 ## What it does
 
@@ -75,7 +76,7 @@ crop insurance data.
 
 ## Class harmonization
 
-`classes.csv` is the version controlled mapping (code, label, group, natural
+`classes.csv` is the version controlled mapping (code, label, group, target, natural
 class, note), copied from the official AAFC legend CSV. A per-year legend
 check compares the service legend labels, in code order, with it, and
 the run prints a warning if they differ.
@@ -88,7 +89,9 @@ the run prints a warning if they differ.
 | natural: shrubland | 50 |
 | crop | 120, 121, 130, 131, and 132 to 199 (all named crops, including fallow) |
 | pasture | 122 (pasture and forages) |
-| other | 10 cloud, 20 water, 30 barren, 34 urban, 35 greenhouses, 60 burnt, 85 peatland |
+| urban | 34 (urban and developed) |
+| barren | 30 (exposed land and barren) |
+| other | 10 cloud, 20 water, 35 greenhouses, 60 burnt, 85 peatland |
 
 Decisions:
 
@@ -129,6 +132,28 @@ A pixel is converted for interval B to L when all of these hold:
 Default: persistence on, 0.5 ha minimum patch, prior crop exclusion on,
 majority filter off, pasture not crop. All are parameters of
 `cropconv.convert.FilterParams` and flags of `cropconv.run`.
+
+## Conversion targets
+
+The pipeline reports natural cover converted to four targets, each on its own
+and never summed: `crop`, `pasture` (122), `urban` (34) and `barren` (30). A
+target is the class a natural cell has in the latest snapshot, so targets are
+disjoint. The same filters (persistence, patch size, majority) run per
+target, and persistence needs the target class in the persistence year too.
+Design: `docs/design/04_conversion_targets.md`.
+
+- `--pasture-is-crop` is a sensitivity option that changes the crop target
+  only; the pasture target is then left out so nothing is counted twice.
+- Prior use exclusion: earlier crop removes a cell from the natural baseline
+  (default on). Earlier pasture and urban use should too (owner decision
+  2026-11-26), switch `--exclude-prior-pasture-urban`. It is off by default
+  for now because it changes crop figures (Stettler 2016 to 2025 crop falls
+  from 3,889 to 1,258 ha, see sensitivity row 8), so it is turned on together
+  with the data regeneration. Earlier barren never removes a cell.
+- `cells.json` writes `converted_ha` as `{target: {class: [...]}}`, leaves out
+  all-zero arrays, and `meta.json` lists `targets` and `contract_version`.
+  Caveats for pasture, urban and barren appear only when that target is
+  present.
 
 ## Sanity check of the real output
 
@@ -180,6 +205,7 @@ from `python -m cropconv.run --sensitivity`:
 | 5. As default, 2 ha patches | 2,849 (8.1%) | 3,222 (6.6%) | 1,309 (3.2%) |
 | 6. As default, plus 3x3 majority filter | 2,687 (7.6%) | 2,928 (6.0%) | 1,203 (2.9%) |
 | 7. As default, pasture/forage counted as crop | 7,770 (22.0%) | 3,833 (12.5%) | 1,885 (7.1%) |
+| 8. As default, also exclude prior pasture and urban | 3,464 (9.8%) | 1,258 (4.2%) | 560 (2.1%) |
 
 Without any filter, the raw "natural to crop" transition is 20 to 25 percent of
 natural cover, which is mostly noise. Persistence removes about half of it,

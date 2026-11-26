@@ -28,6 +28,7 @@ SOURCE = (
 )
 
 BASELINES = [2011, 2016, 2021]
+CONTRACT_VERSION = 2  # 1 = flat converted_ha (crop only, no targets in meta), 2 = nested by target
 GRID_KM = 40
 PX = fx.PIXEL_M
 N_PX = (GRID_KM * 1000) // PX  # 1333 pixels, 39 990 m, inside a 40 km grid
@@ -106,8 +107,8 @@ def load_stack(raster_bbox, years, rows):
     return groups, naturals, legend_log
 
 
-def interval_masks(groups, naturals, latest, params, pixel_area_m2, available):
-    """{baseline: (natural idx, converted mask)} for each baseline."""
+def interval_masks(groups, naturals, latest, params, pixel_area_m2, available, targets=None):
+    """{baseline: (natural idx, {target: converted mask}, persistence year)} for each baseline."""
     out = {}
     for b in BASELINES:
         if b >= latest:
@@ -115,12 +116,12 @@ def interval_masks(groups, naturals, latest, params, pixel_area_m2, available):
         py = cv.persistence_year(b, latest, available)
         persist = groups[py] if py is not None else None
         nat = cv.clean_baseline(naturals[b], [groups[y] for y in available if y < b], params)
-        conv = cv.conversion_mask(nat > 0, groups[latest], persist, params, pixel_area_m2)
+        conv = cv.conversion_masks(nat > 0, groups[latest], persist, params, pixel_area_m2, targets)
         out[b] = (nat, conv, py)
     return out
 
 
-def describe_method(latest, params, persist_years):
+def describe_method(latest, params, persist_years, targets=("crop",)):
     persist = (
         "a cell must also be crop in the most recent earlier snapshot between the baseline and the latest year "
         f"({', '.join(str(p) for p in sorted(set(persist_years.values())))})"
@@ -130,8 +131,9 @@ def describe_method(latest, params, persist_years):
         f"isolated patches smaller than {params.min_patch_ha:g} ha (connected pixels, 30 m) are removed"
         if params.min_patch_ha > 0 else "no minimum patch size was applied"
     )
+    used = "crop, pasture or urban" if params.exclude_prior_pasture_urban else "crop"
     prior = (
-        "natural cover in a baseline year excludes cells already mapped as crop in an earlier snapshot "
+        f"natural cover in a baseline year excludes cells already mapped as {used} in an earlier snapshot "
         "(likely fallow, forage rotation or mapping error; the 2011 baseline has no earlier snapshot)"
         if params.exclude_prior_crop else "cells that were crop in an earlier snapshot are not excluded from the baseline"
     )
@@ -141,12 +143,35 @@ def describe_method(latest, params, persist_years):
         if params.pasture_is_crop else
         "Pasture and forage (ACI 122) is not counted as crop, so conversion to tame pasture or hay is not detected."
     )
+    if list(targets) == ["crop"]:
+        return (
+            "AAFC Annual Crop Inventory classes are grouped into natural (forest 200 to 230, grassland 110, wetland 80, "
+            "shrubland 50), crop (agriculture and annual or specialty crops, codes 120 to 199 except 122) and other "
+            "(water, urban, barren, cloud, burnt area, pasture and forage). "
+            f"A pixel counts as converted when it is natural in the baseline year and crop in {latest}; "
+            f"to reduce classification noise {persist}; {patch}; {maj}; and {prior}. {pasture} "
+            "Converted pixels are summed by baseline natural class on a 1 km grid. "
+            "Percent converted is converted divided by natural cover in the baseline year."
+        )
+    names = {
+        "crop": "crop (agriculture and annual or specialty crops, codes 120 to 199 except 122)",
+        "pasture": "pasture and forage (122)",
+        "urban": "urban and developed (34)",
+        "barren": "exposed land and barren (30)",
+    }
+    listed = ", ".join(names[t] for t in targets)
+    pasture_note = (
+        "Pasture and forage (ACI 122) is reported as its own target and is never added to crop."
+        if "pasture" in targets else pasture
+    )
     return (
         "AAFC Annual Crop Inventory classes are grouped into natural (forest 200 to 230, grassland 110, wetland 80, "
-        "shrubland 50), crop (agriculture and annual or specialty crops, codes 120 to 199 except 122) and other "
-        "(water, urban, barren, cloud, burnt area, pasture and forage). "
-        f"A pixel counts as converted when it is natural in the baseline year and crop in {latest}; "
-        f"to reduce classification noise {persist}; {patch}; {maj}; and {prior}. {pasture} "
+        f"shrubland 50), the conversion targets {listed}, and other (water, cloud, burnt area, greenhouse, peatland). "
+        f"A pixel counts as converted to a target when it is natural in the baseline year and in that target class in {latest}; "
+        "each target is reported separately and a pixel counts in one target only. "
+        f"To reduce classification noise, for every target {persist}; {patch}; {maj}; and {prior}. "
+        "Earlier barren does not remove a cell from the baseline. "
+        f"{pasture_note} "
         "Converted pixels are summed by baseline natural class on a 1 km grid. "
         "Percent converted is converted divided by natural cover in the baseline year."
     )
@@ -163,9 +188,48 @@ CAVEATS = [
     "This is a screening aid for planning and grant context, not a parcel level or legal grade result, and it does not say why land was converted.",
 ]
 
+# Shown only when the matching target is present in the output.
+TARGET_CAVEATS = {
+    "pasture": (
+        "Conversion to pasture and forage is less certain than conversion to crop. Native grassland and seeded "
+        "pasture look alike in the Annual Crop Inventory, so some of this may be existing grass that was reseeded "
+        "or relabelled. It is not added to the cropland figure."
+    ),
+    "urban": (
+        "Conversion to urban and developed land is mapped less accurately than crop. Roads, rail lines, well pads "
+        "and small buildings can appear and disappear between years, so treat small values as uncertain."
+    ),
+    "barren": (
+        "Conversion to barren and exposed land is the least reliable target. Bare soil, gravel, dry wetlands and "
+        "recently cleared land are easily confused, and the label can change from year to year without a real "
+        "change on the ground."
+    ),
+}
 
-def run(area_id, out_dir, params, latest=None, sensitivity=False):
+# CAVEATS entries 2 and 3 describe a crop-only run; they are replaced when other targets are reported.
+MULTI_TARGET_CAVEATS = {
+    2: "Native grassland cannot be separated from tame grass and pasture, and some grassland counted here may be tame.",
+    3: (
+        "Each conversion target is detected separately from natural cover, and a cell counts in one target only. "
+        "Natural cover lost to water or other uses is not shown, and land returning to natural cover is not subtracted."
+    ),
+}
+
+
+def build_caveats(targets):
+    """General caveats plus the caveat for each non-crop target that is present, in target order."""
+    caveats = list(CAVEATS)
+    if set(targets) - {"crop"}:
+        for i, text in MULTI_TARGET_CAVEATS.items():
+            caveats[i] = text
+    return caveats + [TARGET_CAVEATS[t] for t in targets if t in TARGET_CAVEATS]
+
+
+def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None):
     cfg = AREAS[area_id]
+    targets = [t for t in cl.TARGETS if t in (targets or cl.TARGETS)]
+    if params.pasture_is_crop:
+        targets = [t for t in targets if t != "pasture"]  # pasture is part of crop in this mode
     rows = cl.load_classes()
     if cfg.get("bbox_corners"):
         from .export_shapes import test_area_bbox
@@ -199,12 +263,11 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False):
     area_ha = np.bincount(cells[cells >= 0], minlength=n_cells) * pixel_ha
     pm2 = float(np.mean(pixel_m2))
 
-    def compute(p):
-        return interval_masks(groups, naturals, latest, p, pm2, years)
-
-    res = compute(params)
+    res = interval_masks(groups, naturals, latest, params, pm2, years, targets)
     nat_counts = {b: agg.natural_counts(res[b][0], cells, n_cells) for b in res}
-    conv_counts = {b: agg.converted_counts(res[b][0], res[b][1], cells, n_cells) for b in res}
+    conv_counts = {
+        b: {t: agg.converted_counts(res[b][0], res[b][1][t], cells, n_cells) for t in targets} for b in res
+    }
 
     keep = np.zeros(n_cells, dtype=bool)
     for b in res:
@@ -222,9 +285,18 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False):
     for b in sorted(res):
         key = f"{b}-{latest}"
         persist_years[b] = res[b][2]
+        converted = {}
+        for t in targets:
+            by_class = {}
+            for c in cl.NATURAL_CLASSES:
+                arr = agg.to_ha(conv_counts[b][t][c], pixel_ha, keep)
+                if any(arr):  # all-zero arrays are omitted; a missing class or target means zero
+                    by_class[c] = arr
+            if by_class:
+                converted[t] = by_class
         out["intervals"][key] = {
             "natural_ha": {c: agg.to_ha(nat_counts[b][c], pixel_ha, keep) for c in cl.NATURAL_CLASSES},
-            "converted_ha": {c: agg.to_ha(conv_counts[b][c], pixel_ha, keep) for c in cl.NATURAL_CLASSES},
+            "converted_ha": converted,
         }
         intervals_meta.append({"from": b, "to": latest, "years": latest - b})
 
@@ -242,10 +314,12 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False):
         "latest": latest,
         "natural_classes": cl.NATURAL_CLASSES,
         "intervals": intervals_meta,
-        "method": describe_method(latest, params, {b: p for b, p in persist_years.items() if p}),
+        "targets": targets,
+        "contract_version": CONTRACT_VERSION,
+        "method": describe_method(latest, params, {b: p for b, p in persist_years.items() if p}, targets),
         "source": SOURCE,
         "generated": datetime.date.today().isoformat(),
-        "caveats": CAVEATS + cfg.get("extra_caveats", []),
+        "caveats": build_caveats(targets) + cfg.get("extra_caveats", []),
     }
 
     d = out_dir / area_id
@@ -258,27 +332,30 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False):
     areas_path.write_text(json.dumps(sorted(areas, key=lambda a: a["id"]), indent=2) + "\n", encoding="utf-8")
     log(f"wrote {d} (cells.json {(d / 'cells.json').stat().st_size / 1e6:.2f} MB)")
 
-    summarise(out, intervals_meta, area_ha[keep].sum(), legend_log)
+    summarise(out, intervals_meta, area_ha[keep].sum(), legend_log, targets)
     if sensitivity:
         sensitivity_table(groups, naturals, latest, years, pm2, params, cells, pixel_ha, n_cells, keep)
     return meta, out
 
 
-def summarise(out, intervals_meta, area_total, legend_log):
+def summarise(out, intervals_meta, area_total, legend_log, targets=("crop",)):
     print(f"\nLegend checks: {legend_log}")
     print(f"Kept cells: {len(out['lon'])}, kept area {area_total:,.0f} ha")
     for iv in intervals_meta:
         key = f"{iv['from']}-{iv['to']}"
-        n, c = out["intervals"][key]["natural_ha"], out["intervals"][key]["converted_ha"]
+        n = out["intervals"][key]["natural_ha"]
         print(f"\nInterval {key} ({iv['years']} years)")
-        tn = tc = 0.0
-        for k in cl.NATURAL_CLASSES:
-            sn, sc = sum(n[k]), sum(c[k])
-            tn += sn
-            tc += sc
-            print(f"  {k:10s} natural {sn:9.1f} ha  converted {sc:8.1f} ha  {100 * sc / sn if sn else 0:5.2f}%")
-        print(f"  {'TOTAL':10s} natural {tn:9.1f} ha  converted {tc:8.1f} ha  {100 * tc / tn:5.2f}%  "
-              f"({tc / iv['years']:.1f} ha/yr)")
+        for t in targets:
+            c = out["intervals"][key]["converted_ha"].get(t, {})
+            print(f" target {t}")
+            tn = tc = 0.0
+            for k in cl.NATURAL_CLASSES:
+                sn, sc = sum(n[k]), sum(c.get(k, [0]))
+                tn += sn
+                tc += sc
+                print(f"  {k:10s} natural {sn:9.1f} ha  converted {sc:8.1f} ha  {100 * sc / sn if sn else 0:5.2f}%")
+            print(f"  {'TOTAL':10s} natural {tn:9.1f} ha  converted {tc:8.1f} ha  {100 * tc / tn:5.2f}%  "
+                  f"({tc / iv['years']:.1f} ha/yr)")
 
 
 PRESETS = [
@@ -289,6 +366,7 @@ PRESETS = [
     ("5. As default, 2 ha patches", dict(min_patch_ha=2.0)),
     ("6. As default, plus 3x3 majority filter", dict(majority=True)),
     ("7. As default, pasture/forage counted as crop", dict(pasture_is_crop=True)),
+    ("8. As default, also exclude prior pasture and urban", dict(exclude_prior_pasture_urban=True)),
 ]
 
 
@@ -301,11 +379,11 @@ def sensitivity_table(groups, naturals, latest, years, pm2, base_params, cells, 
     nat_line = []
     for name, kw in PRESETS:
         p = replace(base_params, **kw)
-        res = interval_masks(groups, naturals, latest, p, pm2, years)
+        res = interval_masks(groups, naturals, latest, p, pm2, years, ["crop"])
         vals = []
         for b in bases:
             nat, conv, _ = res[b]
-            ha = float(conv.sum() * pm2 / 1e4)
+            ha = float(conv["crop"].sum() * pm2 / 1e4)
             nha = float((nat > 0).sum() * pm2 / 1e4)
             vals.append(f"{ha:,.0f} ({100 * ha / nha:.1f}%)")
             if name.startswith("4."):
@@ -324,6 +402,11 @@ def main(argv=None):
     ap.add_argument("--majority", action="store_true")
     ap.add_argument("--keep-prior-crop", action="store_true",
                     help="do not drop baseline natural cells that were crop in an earlier snapshot")
+    ap.add_argument("--exclude-prior-pasture-urban", action="store_true",
+                    help="also drop baseline natural cells that were pasture or urban in an earlier snapshot "
+                         "(owner decision 2026-11-26; changes crop figures, so off until the data PR)")
+    ap.add_argument("--targets", default=",".join(cl.TARGETS),
+                    help="comma separated conversion targets to write (default: %(default)s)")
     ap.add_argument("--pasture-is-crop", action="store_true")
     ap.add_argument("--sensitivity", action="store_true")
     a = ap.parse_args(argv)
@@ -331,8 +414,13 @@ def main(argv=None):
         persistence=not a.no_persistence, min_patch_ha=a.min_patch_ha,
         majority=a.majority, pasture_is_crop=a.pasture_is_crop,
         exclude_prior_crop=not a.keep_prior_crop,
+        exclude_prior_pasture_urban=a.exclude_prior_pasture_urban,
     )
-    run(a.area, a.out, params, a.latest, a.sensitivity)
+    targets = [t.strip() for t in a.targets.split(",") if t.strip()]
+    bad = [t for t in targets if t not in cl.TARGETS]
+    if bad:
+        ap.error(f"unknown targets {bad}; choose from {cl.TARGETS}")
+    run(a.area, a.out, params, a.latest, a.sensitivity, targets)
 
 
 if __name__ == "__main__":

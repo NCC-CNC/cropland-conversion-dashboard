@@ -178,3 +178,23 @@ is present.
   reliable target. Bare soil, gravel, dry wetlands and recently cleared land
   are easily confused, and the label can change from year to year without a
   real change on the ground."
+
+## PR A implementation notes (2026-11-26)
+
+- Crop is unchanged: regenerating `ab-parkland-stettler` from cached rasters
+  gives crop `converted_ha` identical to the published file, per cell (maximum
+  difference 0.0 ha), and identical `natural_ha`.
+- The prior pasture and urban exclusion is implemented as
+  `FilterParams.exclude_prior_pasture_urban` (`--exclude-prior-pasture-urban`)
+  but is off by default. Turning it on changes crop, because the baseline
+  `natural_ha` shrinks. Stettler crop is unchanged at 3,464 ha for 2011 to
+  2025 (no earlier snapshot) and falls from 3,888 to 1,257 ha for 2016 to 2025
+  and from 1,599 to 560 ha for 2021 to 2025. The owner decision stands; the
+  switch is meant to be turned on in the data PR (PR C), so the published crop
+  numbers move once and with a documented reason.
+- With `--pasture-is-crop` the pasture target is left out, so no hectare is
+  counted twice.
+- Size: Stettler `cells.json` is 0.40 MB raw (0.06 MB gzipped, was 0.21 MB raw)
+  with all four targets. The SK/MB test area is 6.87 MB raw (0.68 MB
+  gzipped), above the 5 MB guideline in the data contract, so publishing it
+  needs the gzip argument accepted or coarser rounding.

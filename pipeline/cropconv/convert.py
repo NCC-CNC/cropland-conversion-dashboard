@@ -1,4 +1,8 @@
-"""Conversion logic: natural in baseline, crop in latest, with noise filters."""
+"""Conversion logic: natural in baseline, a target class in latest, with noise filters.
+
+Targets are crop, pasture, urban and barren (see classes.TARGETS). They key on
+the latest class, so the masks are disjoint by construction.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,10 +10,12 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import ndimage
 
-from .classes import GROUPS
+from .classes import GROUPS, TARGETS
 
 CROP = GROUPS.index("crop")
 PASTURE = GROUPS.index("pasture")
+URBAN = GROUPS.index("urban")
+BARREN = GROUPS.index("barren")
 
 
 @dataclass(frozen=True)
@@ -20,6 +26,11 @@ class FilterParams:
     pasture_is_crop: bool = False  # count ACI 122 pasture/forages as crop
     eight_connected: bool = True   # patch connectivity
     exclude_prior_crop: bool = True  # baseline natural excludes cells crop in an earlier snapshot
+    # also exclude cells that were pasture or urban in an earlier snapshot (barren is never
+    # excluded: it flickers with roads and bare soil). Owner decision 2026-11-26 is to exclude
+    # them, but doing so changes crop figures (Stettler 2016 to 2025 falls from 3,888 to 1,257 ha),
+    # so it is off by default until the data PR re-baselines the published numbers.
+    exclude_prior_pasture_urban: bool = False
 
 
 def is_crop(group_arr: np.ndarray, pasture_is_crop: bool = False) -> np.ndarray:
@@ -29,18 +40,42 @@ def is_crop(group_arr: np.ndarray, pasture_is_crop: bool = False) -> np.ndarray:
     return m
 
 
+def is_target(group_arr: np.ndarray, target: str, params: FilterParams) -> np.ndarray:
+    """Pixels whose class group belongs to the target.
+
+    pasture_is_crop only changes the crop target. In that sensitivity mode
+    pasture is part of crop, so the pasture target is empty to keep targets disjoint.
+    """
+    if target == "crop":
+        return is_crop(group_arr, params.pasture_is_crop)
+    if target == "pasture":
+        if params.pasture_is_crop:
+            return np.zeros(group_arr.shape, dtype=bool)
+        return group_arr == PASTURE
+    if target == "urban":
+        return group_arr == URBAN
+    if target == "barren":
+        return group_arr == BARREN
+    raise ValueError(f"unknown target {target!r}")
+
+
 def clean_baseline(natural_idx: np.ndarray, earlier_groups: list[np.ndarray], params: FilterParams) -> np.ndarray:
-    """Baseline natural class index with cells that were crop in an earlier snapshot removed.
+    """Baseline natural class index with cells already put to use in an earlier snapshot removed.
 
     A cell mapped natural in the baseline year but crop in an earlier year is
     far more likely a fallow, forage or classification flip than natural cover.
+    The same holds for earlier pasture and urban use (switch
+    exclude_prior_pasture_urban). Earlier barren does not remove a cell.
     Baselines with no earlier snapshot are returned unchanged.
     """
-    if not params.exclude_prior_crop or not earlier_groups:
+    if not earlier_groups or not (params.exclude_prior_crop or params.exclude_prior_pasture_urban):
         return natural_idx
     prior = np.zeros(natural_idx.shape, dtype=bool)
     for g in earlier_groups:
-        prior |= is_crop(g, params.pasture_is_crop)
+        if params.exclude_prior_crop:
+            prior |= is_crop(g, params.pasture_is_crop)
+        if params.exclude_prior_pasture_urban:
+            prior |= (g == PASTURE) | (g == URBAN)
     return np.where(prior, 0, natural_idx).astype(natural_idx.dtype)
 
 
@@ -74,18 +109,36 @@ def conversion_mask(
     persist_group: np.ndarray | None,
     params: FilterParams,
     pixel_area_m2: float,
+    target: str = "crop",
 ) -> np.ndarray:
-    """Boolean mask of converted pixels.
+    """Boolean mask of pixels converted to one target.
 
     baseline_natural: bool, natural cover in the baseline snapshot.
     latest_group / persist_group: group index arrays (see classes.GROUPS).
+    The same filters (persistence, majority, patch size) run for every target;
+    persistence requires the target class in the persistence snapshot too.
     """
-    m = baseline_natural & is_crop(latest_group, params.pasture_is_crop)
+    m = baseline_natural & is_target(latest_group, target, params)
     if params.persistence and persist_group is not None:
-        m &= is_crop(persist_group, params.pasture_is_crop)
+        m &= is_target(persist_group, target, params)
     if params.majority:
         m = majority_filter(m)
     if params.min_patch_ha > 0:
         min_px = int(np.ceil(params.min_patch_ha * 1e4 / pixel_area_m2))
         m = filter_patches(m, min_px, params.eight_connected)
     return m
+
+
+def conversion_masks(
+    baseline_natural: np.ndarray,
+    latest_group: np.ndarray,
+    persist_group: np.ndarray | None,
+    params: FilterParams,
+    pixel_area_m2: float,
+    targets: list[str] | None = None,
+) -> dict[str, np.ndarray]:
+    """One conversion mask per target (default: all of classes.TARGETS)."""
+    return {
+        t: conversion_mask(baseline_natural, latest_group, persist_group, params, pixel_area_m2, t)
+        for t in (targets or TARGETS)
+    }

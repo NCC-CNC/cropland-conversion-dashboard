@@ -6,6 +6,7 @@ import pytest
 
 DATA = Path(__file__).resolve().parents[2] / "web" / "public" / "data"
 CLASSES = ["forest", "grassland", "wetland", "shrubland"]
+TARGETS = ["crop", "pasture", "urban", "barren"]
 TOL = 0.011  # rounding to 2 decimals
 
 
@@ -46,42 +47,113 @@ def test_areas_file(dirs):
         assert (DATA / a["id"] / "cells.json").exists()
 
 
+def converted_by_target(meta, iv):
+    """Normalise converted_ha to {target: {class: array}}; a flat (version 1) file is crop only."""
+    conv = iv["converted_ha"]
+    if "targets" not in meta:
+        assert set(conv) == set(CLASSES), "flat converted_ha must have every class"
+        return {"crop": conv}
+    assert set(conv) <= set(meta["targets"])
+    return conv
+
+
+def check_area(meta, cells, area_id):
+    """Validate one area's meta and cells against the data contract (flat v1 and nested v2)."""
+    for k in ["area_id", "name", "bbox", "cell_size_m", "snapshots", "latest", "natural_classes",
+              "intervals", "method", "source", "generated", "caveats"]:
+        assert k in meta, k
+    assert meta["area_id"] == area_id
+    assert meta["natural_classes"] == CLASSES
+    assert meta["latest"] == meta["snapshots"][-1] == max(meta["snapshots"])
+    assert isinstance(meta["caveats"], list) and meta["caveats"]
+    if "targets" in meta:
+        assert meta["targets"] and set(meta["targets"]) <= set(TARGETS)
+        assert "crop" in meta["targets"]
+        assert isinstance(meta["contract_version"], int) and meta["contract_version"] >= 2
+
+    keys = [f"{i['from']}-{i['to']}" for i in meta["intervals"]]
+    assert set(keys) == set(cells["intervals"])
+    for i in meta["intervals"]:
+        assert i["to"] == meta["latest"] and i["years"] == i["to"] - i["from"]
+
+    n = len(cells["lon"])
+    assert n > 0
+    assert len(cells["lat"]) == n and len(cells["area_ha"]) == n
+    w, s, e, nn = meta["bbox"]
+    assert all(w <= x <= e for x in cells["lon"])
+    assert all(s <= y <= nn for y in cells["lat"])
+    assert all(a > 0 for a in cells["area_ha"])
+
+    for key, iv in cells["intervals"].items():
+        assert set(iv) == {"natural_ha", "converted_ha"}
+        for c in CLASSES:
+            assert len(iv["natural_ha"][c]) == n and min(iv["natural_ha"][c]) >= 0
+        by_target = converted_by_target(meta, iv)
+        for t, by_class in by_target.items():
+            assert set(by_class) <= set(CLASSES)
+            for c, conv in by_class.items():  # a missing class means all zero
+                nat = iv["natural_ha"][c]
+                assert len(conv) == n and min(conv) >= 0
+                assert all(cv <= nv + TOL for nv, cv in zip(nat, conv)), f"{key} {t} {c}: converted > natural"
+        # targets are disjoint, so across targets a class cannot convert more than it has
+        for c in CLASSES:
+            for j in range(n):
+                tot = sum(by_class[c][j] for by_class in by_target.values() if c in by_class)
+                assert tot <= iv["natural_ha"][c][j] + TOL, f"{key} {c} cell {j}: targets overlap"
+        total_nat = [sum(iv["natural_ha"][c][j] for c in CLASSES) for j in range(n)]
+        assert all(t <= a + 0.05 for t, a in zip(total_nat, cells["area_ha"])), "natural exceeds cell area"
+
+
 def test_meta_and_cells(dirs):
     for d in dirs:
         meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
         cells = json.loads((d / "cells.json").read_text(encoding="utf-8"))
-        for k in ["area_id", "name", "bbox", "cell_size_m", "snapshots", "latest", "natural_classes",
-                  "intervals", "method", "source", "generated", "caveats"]:
-            assert k in meta, k
-        assert meta["area_id"] == d.name
-        assert meta["natural_classes"] == CLASSES
-        assert meta["latest"] == meta["snapshots"][-1] == max(meta["snapshots"])
-        assert isinstance(meta["caveats"], list) and meta["caveats"]
-
-        keys = [f"{i['from']}-{i['to']}" for i in meta["intervals"]]
-        assert set(keys) == set(cells["intervals"])
-        for i in meta["intervals"]:
-            assert i["to"] == meta["latest"] and i["years"] == i["to"] - i["from"]
-
-        n = len(cells["lon"])
-        assert n > 0
-        assert len(cells["lat"]) == n and len(cells["area_ha"]) == n
-        w, s, e, nn = meta["bbox"]
-        assert all(w <= x <= e for x in cells["lon"])
-        assert all(s <= y <= nn for y in cells["lat"])
-        assert all(a > 0 for a in cells["area_ha"])
-
-        for key, iv in cells["intervals"].items():
-            assert set(iv) == {"natural_ha", "converted_ha"}
-            for c in CLASSES:
-                nat, conv = iv["natural_ha"][c], iv["converted_ha"][c]
-                assert len(nat) == n and len(conv) == n
-                assert min(nat) >= 0 and min(conv) >= 0
-                assert all(cv <= nv + TOL for nv, cv in zip(nat, conv)), f"{key} {c}: converted > natural"
-            total_nat = [sum(iv["natural_ha"][c][j] for c in CLASSES) for j in range(n)]
-            assert all(t <= a + 0.05 for t, a in zip(total_nat, cells["area_ha"])), "natural exceeds cell area"
-            # cells are only kept when something natural exists somewhere in the area
+        check_area(meta, cells, d.name)
         assert (d / "cells.json").stat().st_size < 5_000_000
+
+
+def synthetic(nested):
+    meta = {
+        "area_id": "syn", "name": "Synthetic", "bbox": [-1.0, -1.0, 1.0, 1.0], "cell_size_m": 1000,
+        "snapshots": [2011, 2016, 2025], "latest": 2025, "natural_classes": CLASSES,
+        "intervals": [{"from": 2011, "to": 2025, "years": 14}], "method": "m", "source": "s",
+        "generated": "2026-11-26", "caveats": ["c"],
+    }
+    nat = {c: [10.0, 5.0] for c in CLASSES}
+    if nested:
+        meta.update({"targets": ["crop", "pasture"], "contract_version": 2})
+        conv = {"crop": {"grassland": [2.0, 0.0]}, "pasture": {"grassland": [3.0, 1.0], "forest": [1.0, 0.0]}}
+    else:
+        conv = {c: [1.0, 0.0] for c in CLASSES}
+    cells = {"lon": [0.0, 0.5], "lat": [0.0, 0.5], "area_ha": [100.0, 100.0],
+             "intervals": {"2011-2025": {"natural_ha": nat, "converted_ha": conv}}}
+    return meta, cells
+
+
+def test_old_flat_files_still_validate():
+    meta, cells = synthetic(nested=False)
+    assert "targets" not in meta
+    check_area(meta, cells, "syn")
+    assert set(converted_by_target(meta, cells["intervals"]["2011-2025"])) == {"crop"}
+
+
+def test_nested_files_validate_and_zero_arrays_may_be_omitted():
+    meta, cells = synthetic(nested=True)
+    check_area(meta, cells, "syn")
+
+
+def test_overlapping_targets_are_rejected():
+    meta, cells = synthetic(nested=True)
+    cells["intervals"]["2011-2025"]["converted_ha"]["crop"]["grassland"] = [9.0, 0.0]  # 9 + 3 > 10
+    with pytest.raises(AssertionError):
+        check_area(meta, cells, "syn")
+
+
+def test_unknown_target_is_rejected():
+    meta, cells = synthetic(nested=True)
+    meta["targets"] = ["crop", "greenhouse"]
+    with pytest.raises(AssertionError):
+        check_area(meta, cells, "syn")
 
 
 def test_no_em_dashes(dirs):
