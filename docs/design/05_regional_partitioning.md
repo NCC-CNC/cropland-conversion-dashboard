@@ -50,10 +50,10 @@ to Fisher Branch) was added as a forest, wetland and pasture heavy contrast to
 the farmland-dense SK/MB test area. It touches the Interlake Plain (about 69
 percent), Lake Manitoba Plain (16) and Mid-Boreal Lowland (14) ecoregions.
 
-| Area | km2 | Cells kept | cells.json | gzipped | MB per 1,000 km2 (raw, gz) | PMTiles |
+|Area|km2|Cells kept|cells.json|gzipped|MB per 1,000 km2 (raw, gz)|PMTiles|
 |---|---|---|---|---|---|---|
-| SK/MB test area | 28,800 | n/a | 6.87 MB | 0.68 MB | 0.239, 0.024 | not built |
-| MB Interlake window | 10,000 | 7,651 | 2.15 MB | 0.24 MB | 0.215, 0.024 | 2.16 MB |
+|SK/MB test area|28,800|n/a|6.87 MB|0.68 MB|0.239, 0.024|not built|
+|MB Interlake window|10,000|7,651|2.15 MB|0.24 MB|0.215, 0.024|2.16 MB|
 
 The expectation that forest and wetland country gives a larger file per km2
 did not hold: 76 percent of Interlake cells have natural cover, and per km2 the
@@ -92,30 +92,30 @@ written to `web/public/data/regions.json`, a small GeoJSON FeatureCollection
 from the per-dataset `regions.json` sketched in the layout above, which becomes
 a plain list of ids once cells carry a region id.
 
-| Property | Meaning |
-| --- | --- |
-| `id` | Stable slug of the name plus province code, for example `mixed-grassland-sk` |
-| `name` | Display name (the source typo "Manotoba" is fixed by an override table) |
-| `province` | `MB` or `SK` |
-| `ecoregion`, `ecozone` | National Ecological Framework codes |
-| `area_km2` | Clipped area before simplification, equal-area projection (Canada Albers) |
+|Property|Meaning|
+|---|---|
+|`id`|Stable slug of the name plus province code, for example `mixed-grassland-sk`|
+|`name`|Display name (the source typo "Manotoba" is fixed by an override table)|
+|`province`|`MB` or `SK`|
+|`ecoregion`, `ecozone`|National Ecological Framework codes|
+|`area_km2`|Clipped area before simplification, equal-area projection (Canada Albers)|
 
-| Id | Name | Area km2 |
-| --- | --- | --- |
-| aspen-parkland-mb | Aspen Parkland | 35,098 |
-| aspen-parkland-sk | Aspen Parkland | 81,009 |
-| boreal-transition-mb | Boreal Transition | 3,217 |
-| boreal-transition-sk | Boreal Transition | 53,976 |
-| cypress-upland-sk | Cypress Upland | 5,027 |
-| interlake-plain-mb | Interlake Plain | 39,922 |
-| lake-manitoba-plain-mb | Lake Manitoba Plain | 32,679 |
-| mid-boreal-lowland-mb | Mid-Boreal Lowland | 70,951 |
-| mid-boreal-lowland-sk | Mid-Boreal Lowland | 21,066 |
-| mid-boreal-uplands-mb | Mid-Boreal Uplands | 12,029 |
-| mid-boreal-uplands-sk | Mid-Boreal Uplands | 101,996 |
-| mixed-grassland-sk | Mixed Grassland | 86,494 |
-| moist-mixed-grassland-sk | Moist Mixed Grassland | 67,923 |
-| southwest-manitoba-uplands-mb | Southwest Manitoba Uplands | 2,180 |
+|Id|Name|Area km2|
+|---|---|---|
+|aspen-parkland-mb|Aspen Parkland|35,098|
+|aspen-parkland-sk|Aspen Parkland|81,009|
+|boreal-transition-mb|Boreal Transition|3,217|
+|boreal-transition-sk|Boreal Transition|53,976|
+|cypress-upland-sk|Cypress Upland|5,027|
+|interlake-plain-mb|Interlake Plain|39,922|
+|lake-manitoba-plain-mb|Lake Manitoba Plain|32,679|
+|mid-boreal-lowland-mb|Mid-Boreal Lowland|70,951|
+|mid-boreal-lowland-sk|Mid-Boreal Lowland|21,066|
+|mid-boreal-uplands-mb|Mid-Boreal Uplands|12,029|
+|mid-boreal-uplands-sk|Mid-Boreal Uplands|101,996|
+|mixed-grassland-sk|Mixed Grassland|86,494|
+|moist-mixed-grassland-sk|Moist Mixed Grassland|67,923|
+|southwest-manitoba-uplands-mb|Southwest Manitoba Uplands|2,180|
 
 ### Sources and processing
 
