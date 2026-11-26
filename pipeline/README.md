@@ -222,12 +222,15 @@ spike's validation step, issue 6).
 ```text
 pipeline/
   classes.csv        class mapping (version controlled)
-  cropconv/          fetch, classes, convert, aggregate, run
+  cropconv/          fetch, classes, convert, aggregate, run, regions
   tests/             pytest: mapping, conversion logic, output schema
   requirements.txt
   cache/             downloaded rasters (gitignored)
   .venv/             virtual environment (gitignored)
 ```
+
+`python -m cropconv.regions` builds `web/public/data/regions.json` (MB and SK
+farming-zone ecoregions, see `docs/design/05_regional_partitioning.md`).
 
 To add an area, add an entry to `AREAS` in `cropconv/run.py` (id, name,
 centre) and rerun. `areas.json` is merged by id.
