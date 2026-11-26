@@ -100,9 +100,9 @@ per rule. Judge against an independent sample, not against LUTS.
 ## Sources consulted
 
 - AAFC Land Use dataset record on Open Canada:
-  https://ouvert.canada.ca/data/dataset/fa84a70f-03ad-4946-b0f8-a3b481dd5248
+  <https://ouvert.canada.ca/data/dataset/fa84a70f-03ad-4946-b0f8-a3b481dd5248>
 - AAFC Annual Crop Inventory record:
-  https://open.canada.ca/data/en/dataset/ba2645d5-4458-414d-b196-6303ac06c1c9
+  <https://open.canada.ca/data/en/dataset/ba2645d5-4458-414d-b196-6303ac06c1c9>
 - Earth Engine catalog entry for AAFC ACI:
-  https://developers.google.com/earth-engine/datasets/catalog/AAFC_ACI
+  <https://developers.google.com/earth-engine/datasets/catalog/AAFC_ACI>
 - Huffman et al., integration of Canadian land use datasets (EARSeL 2015).
