@@ -101,6 +101,15 @@ export function resetInterval(): void {
   selected = 0;
 }
 
+let intervalListener: ((index: number) => void) | null = null;
+/** Called with the interval tab index whenever the user picks one. */
+export function onIntervalPick(fn: (index: number) => void): void {
+  intervalListener = fn;
+}
+export function selectedInterval(): number {
+  return selected;
+}
+
 function fmtKm2(v: number): string {
   return v >= 100 ? Math.round(v).toLocaleString('en-CA') : v.toLocaleString('en-CA', { maximumFractionDigits: 1 });
 }
@@ -270,6 +279,7 @@ function pick(i: number): void {
   if (!last) return;
   selected = i;
   renderSummary(last.root, last.summary, last.meta, last.status, last.info);
+  intervalListener?.(i);
 }
 
 function kpi(value: string, label: string): HTMLElement {

@@ -16,7 +16,7 @@ decision are listed at the bottom until settled, then move up. Updated
 |5|Record noise filter sensitivity range in the report|#3|1|in PR|
 |6|Show the test-area 2011 caveat prominently in the UI|#30|3|queued|
 |8|PMTiles 30 m converted layer in the pipeline|#29|1|merged (#48)|
-|9|Map layer for 30 m pixels under a selection size threshold (PMTiles committed to the repo for the test area)|#29|8|queued|
+|9|Map layer for 30 m pixels under a selection size threshold (PMTiles committed to the repo for the test area)|#29|8|in PR|
 |11|PR C: regenerate Stettler and demo fixture, generate the tiled test area and Interlake window, publish|#30|3, 14, 18|queued|
 |12|Raise the cells.json guideline to 10 MB raw|#28|none|merged (#53)|
 |13|Second test window, Interlake MB|#28|1|merged (#51)|

@@ -1,4 +1,5 @@
 import * as maplibregl from 'maplibre-gl';
+import { PMTiles, Protocol } from 'pmtiles';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   TerraDraw,
@@ -15,6 +16,16 @@ import { loadAreas, loadCells, loadIndex, loadMeta, loadProvinceSummary, loadTil
 import { buildGrid } from './lib/grid';
 import { cellsInPolygon, polygonBBox, selectionStatus, summarize, summarizeTargets } from './lib/summary';
 import { DEFAULT_TARGET, targetLabel } from './lib/targets';
+import {
+  PIXEL_MAX_ZOOM,
+  PIXEL_MIN_ZOOM,
+  PIXEL_SOURCE_LAYER,
+  pixelColor,
+  pixelFilter,
+  pixelNote,
+  pixelState,
+  pmtilesPath,
+} from './lib/pixels';
 import { buildProvinceCard, provinceCodes } from './lib/province';
 import {
   cellsOfRegion,
@@ -36,7 +47,9 @@ import {
   renderLoading,
   renderMessage,
   renderSummary,
+  onIntervalPick,
   resetInterval,
+  selectedInterval,
 } from './render';
 import { renderProvinceCard } from './renderProvince';
 
@@ -117,6 +130,8 @@ let updateToken = 0;
 const MAX_DETAIL_TILES = 12;
 const regionSelect = $<HTMLSelectElement>('region-select');
 
+const pmProtocol = new Protocol();
+maplibregl.addProtocol('pmtiles', pmProtocol.tile);
 maplibregl.setWorkerUrl(`${import.meta.env.BASE_URL}maplibre/maplibre-gl-worker.mjs`);
 
 const map = new maplibregl.Map({
@@ -183,8 +198,10 @@ async function update(poly: PolygonGeometry | null): Promise<void> {
   const token = ++updateToken;
   syncHash(poly);
   resultsBtn.hidden = !poly;
+  selectionKm2 = poly ? polygonAreaKm2(poly) : null;
   if (!poly) {
     summary = null;
+    refreshPixels();
     disableExports();
     showProvinceOrEmpty();
     return;
@@ -223,6 +240,7 @@ async function update(poly: PolygonGeometry | null): Promise<void> {
   reportBtn.disabled = false;
   shareBtn.disabled = false;
   currentPoly = poly;
+  refreshPixels();
   renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly), poly, onTarget: setTarget });
 }
 
@@ -441,7 +459,83 @@ function setTarget(target: string): void {
   activeTarget = target;
   if (gridCells) (map.getSource('grid') as maplibregl.GeoJSONSource).setData(buildGrid(gridCells, meta, activeTarget).data);
   setLegendTitle();
+  refreshPixels();
   void update(currentPoly);
+}
+
+/** 30 m converted-pixel layer (ADR 0003). Needs a PMTiles file per area; absent today on the live site. */
+const PIXEL_SRC = 'pixels';
+const PIXEL_LYR = 'pixels-fill';
+let pixelsAvailable = false;
+let selectionKm2: number | null = null;
+let pixelToken = 0;
+const pixelSwitch = $('pixel-switch');
+const pixelChk = $<HTMLInputElement>('chk-pixels');
+const pixelNoteEl = $('pixel-note');
+const pixelLegend = $('pixel-legend');
+
+function removePixelLayer(): void {
+  if (map.getLayer(PIXEL_LYR)) map.removeLayer(PIXEL_LYR);
+  if (map.getSource(PIXEL_SRC)) map.removeSource(PIXEL_SRC);
+}
+
+/** Probe for the area's PMTiles file and add the layer if it is a real archive. Any failure means no layer. */
+async function setupPixels(areaId: string): Promise<void> {
+  const token = ++pixelToken;
+  pixelsAvailable = false;
+  removePixelLayer();
+  try {
+    const url = new URL(`${import.meta.env.BASE_URL}data/${pmtilesPath(areaId)}`, location.href).href;
+    const archive = new PMTiles(url);
+    await archive.getHeader(); // throws for a missing file or an HTML fallback page
+    if (token !== pixelToken) return;
+    pmProtocol.add(archive);
+    map.addSource(PIXEL_SRC, {
+      type: 'vector',
+      url: `pmtiles://${url}`,
+      minzoom: PIXEL_MIN_ZOOM,
+      maxzoom: PIXEL_MAX_ZOOM,
+    });
+    map.addLayer({
+      id: PIXEL_LYR,
+      type: 'fill',
+      source: PIXEL_SRC,
+      'source-layer': PIXEL_SOURCE_LAYER,
+      minzoom: PIXEL_MIN_ZOOM,
+      layout: { visibility: 'none' },
+      paint: { 'fill-color': pixelColor(activeTarget), 'fill-opacity': 0.85, 'fill-antialias': false },
+    });
+    pixelsAvailable = true;
+  } catch {
+    pixelsAvailable = false;
+  }
+  refreshPixels();
+}
+
+/** Apply the current target, interval, selection size and toggle to the pixel layer, legend and note. */
+function refreshPixels(): void {
+  pixelSwitch.hidden = !pixelsAvailable;
+  const state = pixelState({
+    available: pixelsAvailable,
+    enabled: pixelChk.checked,
+    areaKm2: selectionKm2,
+    zoom: map.getZoom(),
+  });
+  const note = pixelNote(state);
+  pixelNoteEl.textContent = note;
+  pixelNoteEl.hidden = !note;
+  const visible = state === 'visible';
+  pixelLegend.hidden = !visible;
+  if (!pixelsAvailable || !map.getLayer(PIXEL_LYR)) return;
+  map.setLayoutProperty(PIXEL_LYR, 'visibility', visible ? 'visible' : 'none');
+  if (!visible || !meta) return;
+  const iv = meta.intervals[selectedInterval()] ?? meta.intervals[0];
+  if (iv) map.setFilter(PIXEL_LYR, pixelFilter(iv.from, activeTarget) as maplibregl.FilterSpecification);
+  const color = pixelColor(activeTarget);
+  map.setPaintProperty(PIXEL_LYR, 'fill-color', color);
+  $('pixel-swatch').style.background = color;
+  $('pixel-legend-text').textContent =
+    `${targetLabel(activeTarget)}, ${iv ? `${iv.from} to ${iv.to}` : ''}. Pixel detail; totals use the 1 km grid.`;
 }
 
 const emptyGrid = { type: 'FeatureCollection', features: [] } as GeoJSON.FeatureCollection;
@@ -556,6 +650,7 @@ async function loadArea(id: string): Promise<void> {
     fitBox(meta.bbox);
   }
   setLegendTitle();
+  void setupPixels(id);
   void update(null);
 }
 
@@ -601,6 +696,10 @@ reportBtn.addEventListener('click', () => {
 $<HTMLInputElement>('chk-grid').addEventListener('change', (e) =>
   setGrid((e.target as HTMLInputElement).checked),
 );
+
+pixelChk.addEventListener('change', refreshPixels);
+onIntervalPick(refreshPixels);
+map.on('zoomend', refreshPixels);
 
 areaSelect.addEventListener('change', () => void loadArea(areaSelect.value));
 regionSelect.addEventListener('change', () => void pickRegion(regionSelect.value));

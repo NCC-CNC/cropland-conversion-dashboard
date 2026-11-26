@@ -165,3 +165,12 @@ or any conversion. Cell centroids are WGS84.
   `method` but is not an interval baseline.
 - `area_id` is free text (the test window is `ab-parkland-stettler`); the web
   app must read it from `areas.json`, not hard-code it.
+
+## Optional 30 m pixel layer
+
+The web app looks for `web/public/data/<area_id>/converted.pmtiles` (ADR 0003).
+It is optional: when the file is missing or unreadable the pixel toggle and
+legend stay hidden and nothing else changes. The archive is PMTiles v3 vector
+tiles, zoom 11 to 14, one source layer `converted`, with properties `interval`
+(baseline year), `target` and `class`. The layer shows only when a selection is
+500 km2 or smaller and the map is at zoom 11 or closer.
