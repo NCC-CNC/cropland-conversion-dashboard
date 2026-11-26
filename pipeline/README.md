@@ -83,17 +83,17 @@ class, note), copied from the official AAFC legend CSV. A per-year legend
 check compares the service legend labels, in code order, with it, and
 the run prints a warning if they differ.
 
-| Group | Codes |
-| --- | --- |
-| natural: forest | 200, 210, 220, 230 |
-| natural: grassland | 110 |
-| natural: wetland | 80 |
-| natural: shrubland | 50 |
-| crop | 120, 121, 130, 131, and 132 to 199 (all named crops, including fallow) |
-| pasture | 122 (pasture and forages) |
-| urban | 34 (urban and developed) |
-| barren | 30 (exposed land and barren) |
-| other | 10 cloud, 20 water, 35 greenhouses, 60 burnt, 85 peatland |
+|Group|Codes|
+|---|---|
+|natural: forest|200, 210, 220, 230|
+|natural: grassland|110|
+|natural: wetland|80|
+|natural: shrubland|50|
+|crop|120, 121, 130, 131, and 132 to 199 (all named crops, including fallow)|
+|pasture|122 (pasture and forages)|
+|urban|34 (urban and developed)|
+|barren|30 (exposed land and barren)|
+|other|10 cloud, 20 water, 35 greenhouses, 60 burnt, 85 peatland|
 
 Decisions:
 
@@ -161,11 +161,11 @@ Design: `docs/design/04_conversion_targets.md`.
 
 Whole window, default filter, ha converted (percent of baseline natural):
 
-| Interval | Natural ha | Converted ha | Percent | Per year |
-| --- | --- | --- | --- | --- |
-| 2011 to 2025 | 35,300 | 3,464 | 9.8 | 247 ha |
-| 2016 to 2025 | 48,808 | 3,888 | 8.0 | 432 ha |
-| 2021 to 2025 | 41,019 | 1,599 | 3.9 | 400 ha |
+|Interval|Natural ha|Converted ha|Percent|Per year|
+|---|---|---|---|---|
+|2011 to 2025|35,300|3,464|9.8|247 ha|
+|2016 to 2025|48,808|3,888|8.0|432 ha|
+|2021 to 2025|41,019|1,599|3.9|400 ha|
 
 By class for 2016 to 2025: grassland 2,722 ha (11.9 percent), wetland 715 ha
 (5.7), shrubland 291 ha (3.3), forest 160 ha (3.4).
@@ -198,16 +198,16 @@ Worries to keep in mind:
 Converted ha over the whole window (percent of that row's baseline natural ha),
 from `python -m cropconv.run --sensitivity`:
 
-| Setting | 2011 to 2025 | 2016 to 2025 | 2021 to 2025 |
-| --- | --- | --- | --- |
-| 1. No filter at all | 6,929 (19.6%) | 15,187 (24.8%) | 10,919 (20.3%) |
-| 2. Persistence only | 3,928 (11.1%) | 8,125 (13.3%) | 4,797 (8.9%) |
-| 3. Persistence + 0.5 ha patches | 3,464 (9.8%) | 5,507 (9.0%) | 2,878 (5.4%) |
-| 4. 3 + exclude prior crop (default until 2026-11-26) | 3,464 (9.8%) | 3,889 (8.0%) | 1,600 (3.9%) |
-| 5. Default: 4 + exclude prior pasture and urban | 3,464 (9.8%) | 1,258 (4.2%) | 560 (2.1%) |
-| 6. As default, 2 ha patches | 2,849 (8.1%) | 978 (3.2%) | 450 (1.7%) |
-| 7. As default, plus 3x3 majority filter | 2,687 (7.6%) | 930 (3.1%) | 426 (1.6%) |
-| 8. As default, pasture/forage counted as crop | 7,770 (22.0%) | 3,815 (12.6%) | 1,871 (7.2%) |
+|Setting|2011 to 2025|2016 to 2025|2021 to 2025|
+|---|---|---|---|
+|1. No filter at all|6,929 (19.6%)|15,187 (24.8%)|10,919 (20.3%)|
+|2. Persistence only|3,928 (11.1%)|8,125 (13.3%)|4,797 (8.9%)|
+|3. Persistence + 0.5 ha patches|3,464 (9.8%)|5,507 (9.0%)|2,878 (5.4%)|
+|4. 3 + exclude prior crop (default until 2026-11-26)|3,464 (9.8%)|3,889 (8.0%)|1,600 (3.9%)|
+|5. Default: 4 + exclude prior pasture and urban|3,464 (9.8%)|1,258 (4.2%)|560 (2.1%)|
+|6. As default, 2 ha patches|2,849 (8.1%)|978 (3.2%)|450 (1.7%)|
+|7. As default, plus 3x3 majority filter|2,687 (7.6%)|930 (3.1%)|426 (1.6%)|
+|8. As default, pasture/forage counted as crop|7,770 (22.0%)|3,815 (12.6%)|1,871 (7.2%)|
 
 Without any filter, the raw "natural to crop" transition is 20 to 25 percent of
 natural cover, which is mostly noise. Persistence removes about half of it,
@@ -246,6 +246,48 @@ original ACI class code, EPSG:3978, attributes YEAR, CODE, LABEL, GRP. Upload
 the zips to a GitHub Release; never commit them. The 2009 and 2010 snapshots
 are 56 m in the source.
 
+## Second test window (Manitoba Interlake)
+
+`python -m cropconv.run --area mb-interlake` (id `mb-interlake`, name `MB test
+window (Interlake)`) is a 99.9 km square of about 10,000 km2 near Gimli to
+Fisher Branch, set by the `bbox_3978` key in `AREAS` (EPSG:3978, whole 30 m
+pixels; `bbox_corners` is the other rectangle option). It touches the
+Interlake Plain (about 69 percent), Lake Manitoba Plain (16) and Mid-Boreal
+Lowland (14) regions and was added to measure sizes in forest, wetland and
+pasture country. Four targets, default filters, latest year 2025:
+
+|Measure|Value|
+|---|---|
+|Cells kept|7,651 of 10,000|
+|cells.json|2.15 MB raw, 0.24 MB gzipped|
+|Per 1,000 km2|0.215 MB raw, 0.024 MB gzipped (SK/MB area: 0.239 and 0.024)|
+|PMTiles (zoom 11 to 14)|2.16 MB|
+|Run time, peak memory|46 s, 0.6 GB (tiles: 28 s, 0.5 GB)|
+
+Natural cover (ha) by baseline, default filters (the class mix moves a lot
+between years, the total does not):
+
+|Baseline|Forest|Grassland|Wetland|Shrubland|Total|
+|---|---|---|---|---|---|
+|2011|32,348|101,296|72,563|239,747|445,954|
+|2016|49,285|160,324|102,707|144,848|457,163|
+|2021|147,271|149,333|71,428|66,613|434,645|
+
+Converted hectares to 2025, all natural classes:
+
+|Interval|Crop|Pasture|Urban|Barren|
+|---|---|---|---|---|
+|2011 to 2025|7,069|1,490|2,423|1,084|
+|2016 to 2025|4,464|1,142|343|640|
+|2021 to 2025|1,393|508|61|136|
+
+The SK/MB 2011 inflation (2011 natural cover about 40 percent above 2016) is
+not present here: 2011 total natural cover is 2.5 percent below 2016, and crop
+conversion is about 500 ha per year in both the 2011 and 2016 intervals, so no
+extra caveat is attached. The split between forest and shrubland does shift
+between years (forest 32,000 ha in 2011 against 147,000 ha in 2021, shrubland
+the reverse), so by-class results here carry the general mapping caveat.
+
 ## 30 m converted-pixel tiles (PMTiles)
 
 ```bash
@@ -272,5 +314,5 @@ minutes and 1.3 GB peak memory for the test area with all four targets.
   under half a screen pixel of area are dropped.
 - Flags: `--latest`, `--targets`, plus the filter flags of `cropconv.run`.
   The service legend check is skipped (rasters come from the cache);
-  `--check-legend` turns it on. Only the `sk-mb-estevan-melville` area is
-  supported so far.
+  `--check-legend` turns it on. Rectangle areas (`sk-mb-estevan-melville`,
+  `mb-interlake`) are supported.
