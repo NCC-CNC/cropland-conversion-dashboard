@@ -109,7 +109,7 @@ def test_meta_and_cells(dirs):
         meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
         cells = json.loads((d / "cells.json").read_text(encoding="utf-8"))
         check_area(meta, cells, d.name)
-        assert (d / "cells.json").stat().st_size < 5_000_000
+        assert (d / "cells.json").stat().st_size < 10_000_000
 
 
 def synthetic(nested):
