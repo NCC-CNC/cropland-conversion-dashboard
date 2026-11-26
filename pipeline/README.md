@@ -244,6 +244,48 @@ original ACI class code, EPSG:3978, attributes YEAR, CODE, LABEL, GRP. Upload
 the zips to a GitHub Release; never commit them. The 2009 and 2010 snapshots
 are 56 m in the source.
 
+## Second test window (Manitoba Interlake)
+
+`python -m cropconv.run --area mb-interlake` (id `mb-interlake`, name `MB test
+window (Interlake)`) is a 99.9 km square of about 10,000 km2 near Gimli to
+Fisher Branch, set by the `bbox_3978` key in `AREAS` (EPSG:3978, whole 30 m
+pixels; `bbox_corners` is the other rectangle option). It touches the
+Interlake Plain (about 69 percent), Lake Manitoba Plain (16) and Mid-Boreal
+Lowland (14) regions and was added to measure sizes in forest, wetland and
+pasture country. Four targets, default filters, latest year 2025:
+
+| Measure | Value |
+|---|---|
+| Cells kept | 7,651 of 10,000 |
+| cells.json | 2.15 MB raw, 0.24 MB gzipped |
+| Per 1,000 km2 | 0.215 MB raw, 0.024 MB gzipped (SK/MB area: 0.239 and 0.024) |
+| PMTiles (zoom 11 to 14) | 2.16 MB |
+| Run time, peak memory | 46 s, 0.6 GB (tiles: 28 s, 0.5 GB) |
+
+Natural cover (ha) by baseline, default filters (the class mix moves a lot
+between years, the total does not):
+
+| Baseline | Forest | Grassland | Wetland | Shrubland | Total |
+|---|---|---|---|---|---|
+| 2011 | 32,348 | 101,296 | 72,563 | 239,747 | 445,954 |
+| 2016 | 49,285 | 160,324 | 102,707 | 144,848 | 457,163 |
+| 2021 | 147,271 | 149,333 | 71,428 | 66,613 | 434,645 |
+
+Converted hectares to 2025, all natural classes:
+
+| Interval | Crop | Pasture | Urban | Barren |
+|---|---|---|---|---|
+| 2011 to 2025 | 7,069 | 1,490 | 2,423 | 1,084 |
+| 2016 to 2025 | 4,464 | 1,142 | 343 | 640 |
+| 2021 to 2025 | 1,393 | 508 | 61 | 136 |
+
+The SK/MB 2011 inflation (2011 natural cover about 40 percent above 2016) is
+not present here: 2011 total natural cover is 2.5 percent below 2016, and crop
+conversion is about 500 ha per year in both the 2011 and 2016 intervals, so no
+extra caveat is attached. The split between forest and shrubland does shift
+between years (forest 32,000 ha in 2011 against 147,000 ha in 2021, shrubland
+the reverse), so by-class results here carry the general mapping caveat.
+
 ## 30 m converted-pixel tiles (PMTiles)
 
 ```bash
@@ -270,5 +312,5 @@ minutes and 1.3 GB peak memory for the test area with all four targets.
   under half a screen pixel of area are dropped.
 - Flags: `--latest`, `--targets`, plus the filter flags of `cropconv.run`.
   The service legend check is skipped (rasters come from the cache);
-  `--check-legend` turns it on. Only the `sk-mb-estevan-melville` area is
-  supported so far.
+  `--check-legend` turns it on. Rectangle areas (`sk-mb-estevan-melville`,
+  `mb-interlake`) are supported.
