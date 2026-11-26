@@ -253,7 +253,7 @@ def build_target_caveats(targets):
     return {t: TARGET_CAVEATS[t] for t in targets if t in TARGET_CAVEATS}
 
 
-def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, tile_km=None):
+def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, tile_km=None, sensitivity_block=True):
     cfg = AREAS[area_id]
     targets = [t for t in cl.TARGETS if t in (targets or cl.TARGETS)]
     if params.pasture_is_crop:
@@ -351,8 +351,10 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, 
         "target_caveats": build_target_caveats(targets),
     }
 
-    sens_rows = sensitivity_rows(groups, naturals, latest, years, pm2, params)
-    meta["sensitivity"] = sensitivity_meta(sens_rows)
+    # eight extra crop passes over every pixel; skip with --no-sensitivity on very large windows
+    sens_rows = sensitivity_rows(groups, naturals, latest, years, pm2, params) if (sensitivity_block or sensitivity) else None
+    if sensitivity_block:
+        meta["sensitivity"] = sensitivity_meta(sens_rows)
 
     if tile_km:
         meta.update(contract_version=3, tiled=True, tile_km=tile_km)
@@ -475,7 +477,10 @@ def main(argv=None):
     ap.add_argument("--targets", default=",".join(cl.TARGETS),
                     help="comma separated conversion targets to write (default: %(default)s)")
     ap.add_argument("--pasture-is-crop", action="store_true")
-    ap.add_argument("--sensitivity", action="store_true")
+    ap.add_argument("--sensitivity", action="store_true", help="also print the filter sensitivity table")
+    ap.add_argument("--no-sensitivity", action="store_true",
+                    help="do not compute or write the meta.json sensitivity block (saves 8 crop passes; "
+                         "for very large windows)")
     ap.add_argument("--tiled", nargs="?", const=tiling.TILE_KM, type=int, default=None, metavar="KM",
                     help="write tiles and index.json instead of cells.json (tile size in km, default %(const)s)")
     a = ap.parse_args(argv)
@@ -489,7 +494,7 @@ def main(argv=None):
     bad = [t for t in targets if t not in cl.TARGETS]
     if bad:
         ap.error(f"unknown targets {bad}; choose from {cl.TARGETS}")
-    run(a.area, a.out, params, a.latest, a.sensitivity, targets, a.tiled)
+    run(a.area, a.out, params, a.latest, a.sensitivity, targets, a.tiled, sensitivity_block=not a.no_sensitivity)
 
 
 if __name__ == "__main__":

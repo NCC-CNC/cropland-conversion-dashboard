@@ -27,7 +27,7 @@ decision are listed at the bottom until settled, then move up. Updated
 |18|Web: region picker, province card (summary first, detail on request), tile loading|#28|3, 16, 17|in PR|
 |19|By-class split caveat and 2025 non-crop note|#2|none|merged (#55)|
 |20|Keyed `meta.target_caveats` instead of pairing by position|#27|1, 3|in PR|
-|21|Run each farming-zone region in tiled mode (fetch rasters for all 14 regions)|#28|16|queued|
+|21|Run each farming-zone region in tiled mode (fetch rasters for all 14 regions)|#28|16|runner built (`python -m cropconv.regional`, tested, one region smoke test done); the full 14 region run (79 tiles, about 30 min) is not yet done|
 |22|Browser check of the nested and tiled data (keyboard, tabs, mobile, screen reader, map shading)|#27|11|queued|
 
 ## Settled decisions (2026-11-26)
