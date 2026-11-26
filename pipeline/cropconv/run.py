@@ -37,7 +37,29 @@ AREAS = {
         "name": "Alberta Parkland test window (Stettler area)",
         "center": (-112.7, 52.3),  # lon, lat
     },
+    "sk-mb-estevan-melville": {
+        "name": "SK/MB test area (Estevan, Melita, Russell, Melville)",
+        "bbox_corners": True,  # rectangle around the four towns, see export_shapes
+        "extra_caveats": [
+            "The 2011 to 2025 interval for this area is unreliable: the 2011 map shows far more natural cover than 2016 "
+            "(about 40 percent more at the same filter settings), so much of the apparent conversion is likely a "
+            "mapping difference between years. Prefer the 2016 and 2021 baselines.",
+        ],
+    },
 }
+
+
+def window_bbox(bbox):
+    """Grid and raster for a rectangle (EPSG:3978, a multiple of the pixel size wide).
+
+    The grid starts at the raster's top left corner and is rounded up to whole
+    1 km cells, so edge cells can be partial; their area comes from pixel counts.
+    """
+    x0, y0, x1, y1 = bbox
+    n_cols = -(-(x1 - x0) // agg.CELL_M)
+    n_rows = -(-(y1 - y0) // agg.CELL_M)
+    grid = (x0, y1 - n_rows * agg.CELL_M, x0 + n_cols * agg.CELL_M, y1)
+    return grid, tuple(bbox)
 
 
 def window(center):
@@ -144,7 +166,11 @@ CAVEATS = [
 def run(area_id, out_dir, params, latest=None, sensitivity=False):
     cfg = AREAS[area_id]
     rows = cl.load_classes()
-    grid, raster = window(cfg["center"])
+    if cfg.get("bbox_corners"):
+        from .export_shapes import test_area_bbox
+        grid, raster = window_bbox(test_area_bbox())
+    else:
+        grid, raster = window(cfg["center"])
     log(f"window grid {grid} raster {raster}")
 
     avail = fx.service_years()
@@ -155,7 +181,8 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False):
     groups, naturals, legend_log = load_stack(raster, years, rows)
 
     # areal scale of the projection varies slowly, take it per cell
-    n_cols = n_rows = GRID_KM
+    n_cols = (grid[2] - grid[0]) // agg.CELL_M
+    n_rows = (grid[3] - grid[1]) // agg.CELL_M
     n_cells = n_cols * n_rows
     xs = grid[0] + (np.arange(n_cols) + 0.5) * agg.CELL_M
     ys = grid[3] - (np.arange(n_rows) + 0.5) * agg.CELL_M
@@ -217,7 +244,7 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False):
         "method": describe_method(latest, params, {b: p for b, p in persist_years.items() if p}),
         "source": SOURCE,
         "generated": datetime.date.today().isoformat(),
-        "caveats": CAVEATS,
+        "caveats": CAVEATS + cfg.get("extra_caveats", []),
     }
 
     d = out_dir / area_id
