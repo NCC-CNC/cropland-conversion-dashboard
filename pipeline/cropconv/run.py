@@ -19,7 +19,7 @@ from . import aggregate as agg
 from . import classes as cl
 from . import convert as cv
 from . import fetch as fx
-from . import tiling
+from . import summaries, tiling
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO / "web" / "public" / "data"
@@ -335,6 +335,7 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, 
     (d / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     if tile_km:
         tiling.write_area(d, out, gx.ravel()[keep], gy.ravel()[keep], area_id, tile_km)
+        summaries.write_province_summary(d)
     else:
         (d / "cells.json").write_text(json.dumps(out, separators=(",", ":")) + "\n", encoding="utf-8")
     areas_path = out_dir / "areas.json"
