@@ -25,7 +25,8 @@ See `docs/design/00_project_brief.md` for the full brief.
 
 MVP live on GitHub Pages: web app in `web/`, real ACI data for one test window
 (Alberta Parkland near Stettler) from the pipeline in `pipeline/`. The UI has had a
-client-demo polish pass (see `docs/handoffs/2026-11-20_ui-polish.md`). Merges
+client-demo polish pass (see `docs/handoffs/2026-11-20_ui-polish.md`) and client
+feedback is tracked in issues #25 to #31 (see `docs/handoffs/2026-11-26_client-feedback.md`). Merges
 by the auto-merge workflow do not trigger Pages; run
 `gh workflow run pages.yml --ref main` until `AUTO_MERGE_TOKEN` is set. Next:
 validate conversion rates against independent sources, settle the noise
