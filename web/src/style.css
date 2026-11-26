@@ -197,6 +197,19 @@ thead th { white-space: nowrap; }
 .tabs button[aria-selected='true'] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); font-weight: 600; }
 .tabs button:hover:not([aria-selected='true']) { color: var(--text); }
 
+.tabs.sub { margin: var(--s4) 0 0; }
+.tabs.sub button { font-size: 0.82rem; }
+
+.others { margin: var(--s3) 0 0; padding: var(--s3) var(--s4); border: 1px solid var(--border); border-radius: var(--radius); }
+.others h3 { margin: 0 0 var(--s2); font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.others ul { list-style: none; margin: 0; padding: 0; }
+.others li { display: grid; grid-template-columns: 1fr auto 4.5em; gap: var(--s2); align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.others li:last-child { border-bottom: 0; }
+.others .o-name { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); }
+.others .o-val, .others .o-pct { text-align: right; font-variant-numeric: tabular-nums; }
+.others .o-pct { color: var(--muted); }
+.caveat { border-left: 3px solid var(--warn-border); padding-left: var(--s2); }
+
 .hero {
   padding: var(--s4); border-radius: var(--radius); background: var(--accent-soft); border: 1px solid var(--border);
 }

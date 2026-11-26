@@ -198,3 +198,10 @@ is present.
   with all four targets. The SK/MB test area is 6.87 MB raw (0.68 MB
   gzipped), above the 5 MB guideline in the data contract, so publishing it
   needs the gzip argument accepted or coarser rounding.
+
+## PR B implementation notes (2026-11-26)
+
+- `normaliseCells` in `web/src/lib/data.ts` turns the flat `converted_ha` into `{crop: ...}` on load. A missing `meta.targets` means crop only, and such areas render with no target tabs and no extra rows.
+- `summarize(cells, meta, indices, target)` returns the active target plus `targetTotals` for every target. `summarizeTargets` gives one summary per target for the CSV and the report. There is no combined total anywhere.
+- Lower-confidence caveats are not duplicated in the web app. The pipeline appends one caveat per pasture, urban and barren target to the end of `meta.caveats`, in `targets` order, and the web app reads the last k entries. Reordering that list in the pipeline would break the pairing; a keyed `meta.target_caveats` would be sturdier.
+- The active target is not stored in the share link. A reopened link starts on the cropland tab.

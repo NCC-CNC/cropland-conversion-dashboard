@@ -1,6 +1,14 @@
 import { cap, fmtHa, fmtPct } from './lib/format';
 import { MIN_RELIABLE_CELLS, type SelectionStatus } from './lib/summary';
 import { coordinatesText, polygonVertices } from './lib/report';
+import {
+  DEFAULT_TARGET,
+  isLowerConfidence,
+  metaTargets,
+  targetCaveats,
+  targetLabel,
+  targetShort,
+} from './lib/targets';
 import type { IntervalSummary, Meta, PolygonGeometry, Summary } from './lib/types';
 
 // Colour-blind safe hues; rows and bars are also labelled directly, so colour is not the only cue.
@@ -81,6 +89,8 @@ export function renderError(root: HTMLElement, text: string): void {
 export interface SelectionInfo {
   areaKm2: number;
   poly: PolygonGeometry;
+  /** Called when the user picks another conversion target tab. The caller re-summarizes and re-renders. */
+  onTarget: (target: string) => void;
 }
 
 let selected = 0;
@@ -133,10 +143,25 @@ export function renderSummary(
   panel.id = 'tabpanel';
   panel.setAttribute('role', 'tabpanel');
   panel.setAttribute('aria-labelledby', `tab-${selected}`);
+  const targets = metaTargets(meta);
+  const multi = targets.length > 1;
+  const caveat = targetCaveats(meta)[summary.target];
+  const classPanel = el('div');
+  if (multi) {
+    classPanel.id = 'target-panel';
+    classPanel.setAttribute('role', 'tabpanel');
+    classPanel.setAttribute('aria-labelledby', `ttab-${targets.indexOf(summary.target)}`);
+  }
+  classPanel.append(renderClasses(iv, summary.target, multi && isLowerConfidence(summary.target)));
+  if (multi && caveat) classPanel.append(el('p', caveat, 'small caveat'));
+  classPanel.append(renderChart(iv, summary.target));
+  panel.append(renderHero(iv));
+  if (multi) {
+    panel.append(renderOthers(iv, targets));
+    panel.append(renderTargetTabs(targets, summary.target, info.onTarget));
+  }
   panel.append(
-    renderHero(iv),
-    renderClasses(iv),
-    renderChart(iv),
+    classPanel,
     el(
       'p',
       `Each cell is about ${(meta.cell_size_m / 1000) ** 2} km². A cell is counted when its centre falls inside your shape. Hectares are rounded and approximate.`,
@@ -171,21 +196,35 @@ function renderCoordinates(poly: PolygonGeometry): HTMLElement {
   return d;
 }
 
-function renderTabs(summary: Summary): HTMLElement {
-  const tabs = el('div', undefined, 'tabs');
+/**
+ * WAI-ARIA tabs with automatic activation: roving tabindex, aria-selected, and Left, Right, Home and
+ * End keys. `group` marks the tablist so focus can return to the right one after a re-render.
+ */
+function makeTablist(opts: {
+  group: string;
+  label: string;
+  idPrefix: string;
+  panelId: string;
+  names: string[];
+  current: number;
+  onPick: (i: number) => void;
+  extraClass?: string;
+}): HTMLElement {
+  const tabs = el('div', undefined, opts.extraClass ? `tabs ${opts.extraClass}` : 'tabs');
   tabs.setAttribute('role', 'tablist');
-  tabs.setAttribute('aria-label', 'Time interval');
-  summary.intervals.forEach((iv, i) => {
-    const b = el('button', `${iv.from} to ${iv.to}`);
+  tabs.setAttribute('aria-label', opts.label);
+  tabs.dataset.group = opts.group;
+  const L = opts.names.length;
+  opts.names.forEach((name, i) => {
+    const b = el('button', name);
     b.type = 'button';
     b.setAttribute('role', 'tab');
-    b.id = `tab-${i}`;
-    b.setAttribute('aria-controls', 'tabpanel');
-    b.setAttribute('aria-selected', String(i === selected));
-    b.tabIndex = i === selected ? 0 : -1;
-    b.addEventListener('click', () => pick(i));
+    b.id = `${opts.idPrefix}-${i}`;
+    b.setAttribute('aria-controls', opts.panelId);
+    b.setAttribute('aria-selected', String(i === opts.current));
+    b.tabIndex = i === opts.current ? 0 : -1;
+    b.addEventListener('click', () => opts.onPick(i));
     b.addEventListener('keydown', (e) => {
-      const L = summary.intervals.length;
       let next = -1;
       if (e.key === 'ArrowRight') next = (i + 1) % L;
       else if (e.key === 'ArrowLeft') next = (i - 1 + L) % L;
@@ -193,12 +232,38 @@ function renderTabs(summary: Summary): HTMLElement {
       else if (e.key === 'End') next = L - 1;
       if (next < 0) return;
       e.preventDefault();
-      pick(next);
-      (last?.root.querySelectorAll('[role=tab]')[next] as HTMLElement | undefined)?.focus();
+      opts.onPick(next);
+      const list = last?.root.querySelector(`[data-group="${opts.group}"]`);
+      (list?.querySelectorAll('[role=tab]')[next] as HTMLElement | undefined)?.focus();
     });
     tabs.append(b);
   });
   return tabs;
+}
+
+function renderTabs(summary: Summary): HTMLElement {
+  return makeTablist({
+    group: 'interval',
+    label: 'Time interval',
+    idPrefix: 'tab',
+    panelId: 'tabpanel',
+    names: summary.intervals.map((iv) => `${iv.from} to ${iv.to}`),
+    current: selected,
+    onPick: pick,
+  });
+}
+
+function renderTargetTabs(targets: string[], active: string, onTarget: (t: string) => void): HTMLElement {
+  return makeTablist({
+    group: 'target',
+    label: 'Conversion target',
+    idPrefix: 'ttab',
+    panelId: 'target-panel',
+    names: targets.map(targetShort),
+    current: targets.indexOf(active),
+    onPick: (i) => onTarget(targets[i]),
+    extraClass: 'sub',
+  });
 }
 
 function pick(i: number): void {
@@ -213,8 +278,33 @@ function kpi(value: string, label: string): HTMLElement {
   return d;
 }
 
+/** Compact rows for the other targets, beneath the cropland headline. No combined total, by design. */
+function renderOthers(iv: IntervalSummary, targets: string[]): HTMLElement {
+  const sec = el('section', undefined, 'others');
+  sec.setAttribute('aria-label', `Conversion to other uses, ${iv.from} to ${iv.to}`);
+  sec.append(el('h3', 'Also converted to'));
+  const ul = el('ul');
+  for (const t of targets) {
+    if (t === DEFAULT_TARGET) continue;
+    const r = iv.targetTotals[t];
+    if (!r) continue;
+    const li = el('li');
+    const name = el('span', targetShort(t), 'o-name');
+    if (isLowerConfidence(t)) name.append(el('span', 'Lower confidence', 'badge'));
+    li.append(
+      name,
+      el('span', `${fmtHa(r.convertedHa)} ha`, 'o-val'),
+      el('span', r.naturalHa > 0 ? fmtPct(r.percent) : '-', 'o-pct'),
+    );
+    ul.append(li);
+  }
+  sec.append(ul);
+  sec.append(el('p', 'Reported separately. These are not added to the cropland figure.', 'small'));
+  return sec;
+}
+
 function renderHero(iv: IntervalSummary): HTMLElement {
-  const t = iv.total;
+  const t = iv.targetTotals[DEFAULT_TARGET] ?? iv.total;
   const hero = el('section', undefined, 'hero');
   hero.setAttribute('aria-label', `Headline result, ${iv.from} to ${iv.to}`);
   hero.append(el('div', 'Habitat converted to cropland', 'eyebrow'));
@@ -234,14 +324,15 @@ function renderHero(iv: IntervalSummary): HTMLElement {
   return hero;
 }
 
-function renderClasses(iv: IntervalSummary): HTMLElement {
+function renderClasses(iv: IntervalSummary, target: string, lowConf: boolean): HTMLElement {
   const sec = el('section');
   const head = el('div', undefined, 'section-head');
   head.append(el('h3', 'By natural class'), el('span', 'Indicative', 'badge'));
+  if (lowConf) head.append(el('span', 'Lower confidence', 'badge'));
   sec.append(head);
   const table = el('table', undefined, 'indicative');
   table.append(
-    el('caption', `Conversion of natural habitat to crop by class, ${iv.from} to ${iv.to}. Natural and Converted are in hectares; Share is percent.`, 'sr-only'),
+    el('caption', `Conversion of natural habitat to ${targetLabel(target)} by class, ${iv.from} to ${iv.to}. Natural and Converted are in hectares; Share is percent.`, 'sr-only'),
   );
   const thead = el('thead');
   const hr = el('tr');
@@ -287,7 +378,7 @@ function renderClasses(iv: IntervalSummary): HTMLElement {
   return sec;
 }
 
-function renderChart(iv: IntervalSummary): HTMLElement {
+function renderChart(iv: IntervalSummary, target: string): HTMLElement {
   const fig = el('figure', undefined, 'chart');
   const max = Math.max(0.0001, ...iv.rows.map((r) => r.convertedHa));
   for (const r of iv.rows) {
@@ -304,7 +395,7 @@ function renderChart(iv: IntervalSummary): HTMLElement {
   fig.setAttribute('role', 'img');
   fig.setAttribute(
     'aria-label',
-    `Bar chart of converted hectares by natural class, ${iv.from} to ${iv.to}. The same values are in the table above.`,
+    `Bar chart of hectares converted to ${targetLabel(target)} by natural class, ${iv.from} to ${iv.to}. The same values are in the table above.`,
   );
   return fig;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildCsv } from './csv';
+import { normaliseCells } from './data';
 import { visibleAreas } from './areas';
 import { buildReport, coordinatesText, polygonVertices } from './report';
 import {
@@ -9,11 +10,12 @@ import {
   polygonBBox,
   selectionStatus,
   summarize,
+  summarizeTargets,
 } from './summary';
-import type { Cells, Meta, PolygonGeometry } from './types';
+import type { Meta, PolygonGeometry, RawCells } from './types';
 
 // Four cells on a 2 x 2 lattice. Indices: 0=(0,0) 1=(1,0) 2=(0,1) 3=(1,1).
-const cells: Cells = {
+const flat: RawCells = {
   lon: [0, 1, 0, 1],
   lat: [0, 0, 1, 1],
   area_ha: [100, 100, 100, 100],
@@ -24,6 +26,9 @@ const cells: Cells = {
     },
   },
 };
+
+// Old areas store a flat converted_ha; the app always sees the normalised, per target form.
+const cells = normaliseCells(flat);
 
 const meta: Meta = {
   area_id: 'tiny',
@@ -151,13 +156,13 @@ describe('bbox helpers', () => {
 });
 
 describe('buildCsv', () => {
-  const csv = buildCsv(summarize(cells, meta, [0, 1]), meta);
+  const csv = buildCsv([summarize(cells, meta, [0, 1])], meta);
   const lines = csv.trim().split('\n');
 
   it('has a header and one row per class plus total', () => {
     expect(lines[0]).toContain('annual_rate_ha_per_year');
-    expect(lines[1]).toBe('tiny,2011,2021,forest,30.00,3.00,10.00,0.30,2');
-    expect(lines[3]).toBe('tiny,2011,2021,total,40.00,3.00,7.50,0.30,2');
+    expect(lines[1]).toBe('tiny,crop,2011,2021,forest,30.00,3.00,10.00,0.30,2');
+    expect(lines[3]).toBe('tiny,crop,2011,2021,total,40.00,3.00,7.50,0.30,2');
   });
 
   it('quotes the note line containing commas', () => {
@@ -222,7 +227,7 @@ describe('report', () => {
   });
   it('includes selection, statistics, methods and caveats', () => {
     const md = buildReport({
-      summary: summarize(cells, meta, [0, 1]),
+      summaries: summarizeTargets(cells, meta, [0, 1]),
       meta,
       poly: ring,
       areaKm2: 12.34,
@@ -233,7 +238,7 @@ describe('report', () => {
       expect(md).toContain(h);
     }
     expect(md).toContain('52.10000, -112.12346');
-    expect(md).toContain('| Total |');
+    expect(md).toContain('| Crop | Total |');
     expect(md).not.toContain('\u2014');
   });
 });
