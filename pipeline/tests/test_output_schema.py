@@ -44,7 +44,8 @@ def test_areas_file(dirs):
         w, s, e, n = a["bbox"]
         assert w < e and s < n
         assert (DATA / a["id"] / "meta.json").exists()
-        assert (DATA / a["id"] / "cells.json").exists()
+        d = DATA / a["id"]
+        assert (d / "cells.json").exists() or (d / "index.json").exists()  # tiled areas have no cells.json
 
 
 def converted_by_target(meta, iv):
@@ -112,12 +113,21 @@ def check_area(meta, cells, area_id):
         assert all(t <= a + 0.05 for t, a in zip(total_nat, cells["area_ha"])), "natural exceeds cell area"
 
 
+def cell_files(d, meta):
+    if meta.get("tiled"):
+        files = sorted((d / "tiles").glob("*.json"))
+        assert files and len(files) == len(json.loads((d / "index.json").read_text(encoding="utf-8"))["tiles"])
+        return files
+    return [d / "cells.json"]
+
+
 def test_meta_and_cells(dirs):
     for d in dirs:
         meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
-        cells = json.loads((d / "cells.json").read_text(encoding="utf-8"))
-        check_area(meta, cells, d.name)
-        assert (d / "cells.json").stat().st_size < 10_000_000
+        for f in cell_files(d, meta):  # one cells.json, or every tile of a tiled area
+            cells = json.loads(f.read_text(encoding="utf-8"))
+            check_area(meta, cells, d.name)
+            assert f.stat().st_size < 10_000_000
 
 
 def synthetic(nested):
@@ -166,7 +176,9 @@ def test_unknown_target_is_rejected():
 
 def test_no_em_dashes(dirs):
     for d in dirs:
-        for name in ["meta.json", "cells.json"]:
-            assert chr(0x2014) not in (d / name).read_text(encoding="utf-8")
         meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
+        extra = [d / "index.json", d / "province_summary.json"] if meta.get("tiled") else []
+        for f in [d / "meta.json"] + extra + cell_files(d, meta):
+            if f.exists():
+                assert chr(0x2014) not in f.read_text(encoding="utf-8")
         assert not any(chr(0x2014) in s for s in all_strings(meta))
