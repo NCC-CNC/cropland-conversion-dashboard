@@ -126,6 +126,7 @@ button { cursor: pointer; }
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md);
   font-size: 0.75rem;
 }
+.legend { pointer-events: none; }
 .legend[hidden] { display: none; }
 .legend-title { font-weight: 600; margin-bottom: 6px; }
 .legend-ramp { height: 10px; border-radius: 3px; background: linear-gradient(90deg, #ffe08a 0%, #f4a259 25%, #e0702f 55%, #b13a0b 100%); }
@@ -146,7 +147,7 @@ button { cursor: pointer; }
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { z-index: 4; }
 .maplibregl-ctrl-group button { width: 40px !important; height: 40px !important; }
 .maplibregl-ctrl button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
-.maplibregl-ctrl-attrib-button { width: 28px !important; height: 28px !important; }
+.maplibregl-ctrl-attrib { font-size: 11px; }
 thead th { white-space: nowrap; }
 .linkbtn { margin-top: var(--s2); min-height: 40px; padding: 0 var(--s4); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-weight: 600; }
 .linkbtn:hover { border-color: var(--accent); }
@@ -280,12 +281,9 @@ tr.total th, tr.total td { font-weight: 700; border-top: 2px solid var(--border)
   .toolbar { right: var(--s3); top: var(--s2); }
   .group button .lbl { display: none; }
   .group button { padding: 0 var(--s3); min-width: 44px; justify-content: center; }
-  .hint { top: 112px; font-size: 0.8rem; border-radius: var(--radius); }
-  .legend { width: 150px; }
+  .hint { top: 72px; max-width: calc(100% - 110px); font-size: 0.8rem; border-radius: var(--radius); }
+  .legend { width: 128px; right: var(--s3); left: auto; top: 168px; bottom: auto; padding: 6px 8px; font-size: 0.68rem; opacity: 0.92; }
   .hero .big { font-size: 2rem; }
-}
-@media (max-width: 420px) {
-  .legend { display: none; }
 }
 
 @media (max-width: 480px) {
@@ -293,3 +291,7 @@ tr.total th, tr.total td { font-weight: 700; border-top: 2px solid var(--border)
   th, td { padding: 7px 3px; }
   table { font-size: 0.82rem; }
 }
+
+.coords { margin-top: var(--s4); border-top: 1px solid var(--border); padding-top: var(--s2); }
+.coords summary { cursor: pointer; font-weight: 600; min-height: 40px; display: flex; align-items: center; }
+.coords pre { max-height: 180px; overflow: auto; margin: var(--s2) 0; padding: var(--s2) var(--s3); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }

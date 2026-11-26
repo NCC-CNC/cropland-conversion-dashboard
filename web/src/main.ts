@@ -16,6 +16,7 @@ import { buildGrid } from './lib/grid';
 import { cellsInPolygon, polygonBBox, selectionStatus, summarize } from './lib/summary';
 import type { AreaEntry, Cells, Meta, PolygonGeometry, Summary } from './lib/types';
 import { polygonAreaKm2 } from './lib/geo';
+import { buildReport } from './lib/report';
 import { decodeShare, encodeShare } from './lib/share';
 import { ICONS, LOGO } from './icons';
 import {
@@ -33,6 +34,7 @@ const summaryEl = $('summary');
 const aboutBody = $('about-body');
 const hintEl = $('hint');
 const csvBtn = $<HTMLButtonElement>('btn-csv');
+const reportBtn = $<HTMLButtonElement>('btn-report');
 const shareBtn = $<HTMLButtonElement>('btn-share');
 const legendEl = $('legend');
 const resultsBtn = $('btn-results');
@@ -82,7 +84,7 @@ const modeButtons: Record<string, HTMLButtonElement> = {
 const HINTS: Record<string, string> = {
   polygon: 'Click to add corners. Double-click, or click the last point again, to finish. Esc cancels.',
   rectangle: 'Press on one corner, drag to the opposite corner, then release. Esc cancels.',
-  select: 'Drag the shape to move it, or drag a corner to reshape it.',
+  select: 'Drag to move the shape, or drag a corner to reshape.',
   static: '',
 };
 
@@ -90,6 +92,7 @@ let meta: Meta | null = null;
 let cells: Cells | null = null;
 let summary: Summary | null = null;
 let areas: AreaEntry[] = [];
+let currentPoly: PolygonGeometry | null = null;
 
 maplibregl.setWorkerUrl(`${import.meta.env.BASE_URL}maplibre/maplibre-gl-worker.mjs`);
 
@@ -108,9 +111,11 @@ const map = new maplibregl.Map({
     },
     layers: [{ id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-saturation': -0.45, 'raster-contrast': -0.1 } }],
   },
+  attributionControl: false,
   center: [-106, 52.5],
   zoom: 8,
 });
+map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
 
@@ -127,11 +132,12 @@ function polygonFromDraw(): PolygonGeometry | null {
 function update(poly: PolygonGeometry | null): void {
   if (!meta || !cells) return;
   syncHash(poly);
-  shareBtn.disabled = !poly;
   resultsBtn.hidden = !poly;
   if (!poly) {
     summary = null;
     csvBtn.disabled = true;
+    reportBtn.disabled = true;
+    shareBtn.disabled = true;
     renderEmpty(summaryEl);
     return;
   }
@@ -140,11 +146,17 @@ function update(poly: PolygonGeometry | null): void {
   summary = summarize(cells, meta, idx);
   if (status === 'outside-coverage' || status === 'no-natural-cells') {
     csvBtn.disabled = true;
+    reportBtn.disabled = true;
+    shareBtn.disabled = true;
+    setHint('');
     renderMessage(summaryEl, status, zoomToArea);
     return;
   }
   csvBtn.disabled = false;
-  renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly) });
+  reportBtn.disabled = false;
+  shareBtn.disabled = false;
+  currentPoly = poly;
+  renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly), poly });
 }
 
 function setMode(mode: string): void {
@@ -246,7 +258,10 @@ function endRectDrag(cancel: boolean, end?: maplibregl.LngLat, endPx?: { x: numb
   map.dragPan.enable();
   if (cancel || !start || !startPx || !end || !endPx) return;
   // Ignore a stray click or tiny drag.
-  if (Math.abs(endPx.x - startPx.x) < 6 || Math.abs(endPx.y - startPx.y) < 6) return;
+  if (Math.abs(endPx.x - startPx.x) < 6 || Math.abs(endPx.y - startPx.y) < 6) {
+    setHint('That shape is too small. Press and drag across a larger area.', 3500);
+    return;
+  }
   addRectangle(rectCoords(start, end));
 }
 
@@ -266,10 +281,22 @@ function setupRectDrag(): void {
   };
   map.on('mousedown', down);
   map.on('touchstart', down);
-  map.on('mousemove', move);
   map.on('touchmove', move);
-  map.on('mouseup', up);
   map.on('touchend', up);
+  // Track the mouse on the window so releasing over a map overlay (legend, toolbar) still ends the drag.
+  const winPoint = (e: MouseEvent) => {
+    const r = map.getCanvas().getBoundingClientRect();
+    const point = { x: e.clientX - r.left, y: e.clientY - r.top };
+    return { point, lngLat: map.unproject([point.x, point.y]) };
+  };
+  window.addEventListener('mousemove', (e) => {
+    if (rectStart) setPreview(rectCoords(rectStart, winPoint(e).lngLat));
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (!rectStart) return;
+    const w = winPoint(e);
+    endRectDrag(false, w.lngLat, w.point);
+  });
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && rectStart) endRectDrag(true);
   });
@@ -375,16 +402,33 @@ shareBtn.addEventListener('click', async () => {
   }
 });
 
-csvBtn.addEventListener('click', () => {
-  if (!summary || !meta) return;
-  const blob = new Blob([buildCsv(summary, meta)], { type: 'text/csv;charset=utf-8' });
+function download(text: string, type: string, name: string): void {
+  const blob = new Blob([text], { type });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `conversion-summary-${meta.area_id}.csv`;
+  a.download = name;
   document.body.append(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(a.href);
+}
+
+csvBtn.addEventListener('click', () => {
+  if (!summary || !meta) return;
+  download(buildCsv(summary, meta), 'text/csv;charset=utf-8', `conversion-summary-${meta.area_id}.csv`);
+});
+
+reportBtn.addEventListener('click', () => {
+  if (!summary || !meta || !currentPoly) return;
+  const md = buildReport({
+    summary,
+    meta,
+    poly: currentPoly,
+    areaKm2: polygonAreaKm2(currentPoly),
+    url: location.href,
+    generatedAt: new Date().toISOString(),
+  });
+  download(md, 'text/markdown;charset=utf-8', `conversion-report-${meta.area_id}.md`);
 });
 
 $<HTMLInputElement>('chk-grid').addEventListener('change', (e) =>
