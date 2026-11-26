@@ -72,9 +72,11 @@ or any conversion. Cell centroids are WGS84.
 
 - All arrays within a file have equal length, hectares rounded to 2 decimals.
 - `natural_ha[c]` is hectares of class c in the baseline snapshot, excluding
-  cells that were already mapped as crop in an earlier snapshot (the pipeline
-  treats those as fallow, forage rotation or mapping error; the earliest
-  baseline has no earlier snapshot, so none are excluded there). Cells are
+  cells that were already mapped as crop, pasture or forage, or urban in an
+  earlier snapshot (the pipeline treats earlier crop as fallow, forage rotation
+  or mapping error, and earlier pasture or urban as tame grass, hay or developed
+  land; the earliest baseline has no earlier snapshot, so none are excluded
+  there). Earlier barren never excludes a cell. Cells are
   therefore comparable between `natural_ha` and `converted_ha`.
 - `converted_ha[t][c]` is hectares of natural class c in the baseline
   snapshot that are in target t in the latest snapshot after the noise filter
@@ -86,9 +88,11 @@ or any conversion. Cell centroids are WGS84.
 - Version 1 files have the flat form `converted_ha[c]` (crop only), with every
   class present:
   `"converted_ha": {"forest": [..], "grassland": [..], "wetland": [..], "shrubland": [..]}`.
-- `natural_ha` also excludes cells that were pasture or urban in an earlier
-  snapshot when the pipeline ran with `--exclude-prior-pasture-urban`; `method`
-  says which exclusions were applied. Earlier barren never excludes a cell.
+- The pasture and urban exclusion is on by default (owner decision
+  2026-11-26) and is switched off with `--keep-prior-pasture-urban`; `method`
+  says which exclusions were applied, and when the rule is on it also says that
+  figures are lower than in earlier versions. Earlier barren never excludes a
+  cell.
 - Caveats for pasture, urban and barren are in `meta.caveats` only when that
   target is in `targets`.
 - The web app computes, for a polygon: sum of cells whose centroid lies inside,

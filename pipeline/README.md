@@ -20,7 +20,7 @@ into `pipeline/cache/`, which is gitignored. Later runs reuse the cache. A
 full run takes about 30 seconds. Never commit rasters.
 
 Useful flags: `--latest YEAR`, `--min-patch-ha X`, `--no-persistence`,
-`--majority`, `--keep-prior-crop`, `--exclude-prior-pasture-urban`, `--pasture-is-crop`,
+`--majority`, `--keep-prior-crop`, `--keep-prior-pasture-urban`, `--pasture-is-crop`,
 `--targets crop,pasture,urban,barren`, `--out DIR`.
 
 ## What it does
@@ -144,12 +144,12 @@ Design: `docs/design/04_conversion_targets.md`.
 
 - `--pasture-is-crop` is a sensitivity option that changes the crop target
   only; the pasture target is then left out so nothing is counted twice.
-- Prior use exclusion: earlier crop removes a cell from the natural baseline
-  (default on). Earlier pasture and urban use should too (owner decision
-  2026-11-26), switch `--exclude-prior-pasture-urban`. It is off by default
-  for now because it changes crop figures (Stettler 2016 to 2025 crop falls
-  from 3,889 to 1,258 ha, see sensitivity row 8), so it is turned on together
-  with the data regeneration. Earlier barren never removes a cell.
+- Prior use exclusion: earlier crop, pasture and urban each remove a cell from
+  the natural baseline (default on since 2026-11-26, owner decision). This
+  lowers crop figures (Stettler 2016 to 2025 crop falls from 3,889 to 1,258 ha,
+  see sensitivity rows 4 and 5), and the method text says so. Opt out with
+  `--keep-prior-pasture-urban` to reproduce the earlier figures. Earlier barren
+  never removes a cell.
 - `cells.json` writes `converted_ha` as `{target: {class: [...]}}`, leaves out
   all-zero arrays, and `meta.json` lists `targets` and `contract_version`.
   Caveats for pasture, urban and barren appear only when that target is
@@ -201,17 +201,19 @@ from `python -m cropconv.run --sensitivity`:
 | 1. No filter at all | 6,929 (19.6%) | 15,187 (24.8%) | 10,919 (20.3%) |
 | 2. Persistence only | 3,928 (11.1%) | 8,125 (13.3%) | 4,797 (8.9%) |
 | 3. Persistence + 0.5 ha patches | 3,464 (9.8%) | 5,507 (9.0%) | 2,878 (5.4%) |
-| 4. Default: 3 + exclude prior crop | 3,464 (9.8%) | 3,889 (8.0%) | 1,600 (3.9%) |
-| 5. As default, 2 ha patches | 2,849 (8.1%) | 3,222 (6.6%) | 1,309 (3.2%) |
-| 6. As default, plus 3x3 majority filter | 2,687 (7.6%) | 2,928 (6.0%) | 1,203 (2.9%) |
-| 7. As default, pasture/forage counted as crop | 7,770 (22.0%) | 3,833 (12.5%) | 1,885 (7.1%) |
-| 8. As default, also exclude prior pasture and urban | 3,464 (9.8%) | 1,258 (4.2%) | 560 (2.1%) |
+| 4. 3 + exclude prior crop (default until 2026-11-26) | 3,464 (9.8%) | 3,889 (8.0%) | 1,600 (3.9%) |
+| 5. Default: 4 + exclude prior pasture and urban | 3,464 (9.8%) | 1,258 (4.2%) | 560 (2.1%) |
+| 6. As default, 2 ha patches | 2,849 (8.1%) | 978 (3.2%) | 450 (1.7%) |
+| 7. As default, plus 3x3 majority filter | 2,687 (7.6%) | 930 (3.1%) | 426 (1.6%) |
+| 8. As default, pasture/forage counted as crop | 7,770 (22.0%) | 3,815 (12.6%) | 1,871 (7.2%) |
 
 Without any filter, the raw "natural to crop" transition is 20 to 25 percent of
 natural cover, which is mostly noise. Persistence removes about half of it,
-the patch size and prior crop filters remove a further 20 to 45 percent. The
-default sits in the middle of the plausible range (rows 4 to 6 differ by about
-a third). The result is a conservative, filtered estimate, not a validated one:
+the patch size and prior use filters remove a further 20 to 75 percent (the
+prior pasture and urban rule alone removes about two thirds of the 2016 to 2025
+Stettler figure). The default is the strictest setting that is still based on
+a documented rule; the patch size and majority options (rows 6 and 7) move it
+by about a quarter. The result is a conservative, filtered estimate, not a validated one:
 no independent conversion estimate was compared (that is the feasibility
 spike's validation step, issue 6).
 
@@ -241,3 +243,32 @@ into `pipeline/exports/` (gitignored). One polygon per connected patch of an
 original ACI class code, EPSG:3978, attributes YEAR, CODE, LABEL, GRP. Upload
 the zips to a GitHub Release; never commit them. The 2009 and 2010 snapshots
 are 56 m in the source.
+
+## 30 m converted-pixel tiles (PMTiles)
+
+```bash
+python -m cropconv.export_tiles --area sk-mb-estevan-melville
+```
+
+Writes `pipeline/exports/<area_id>.pmtiles` (gitignored; never commit it),
+the layer behind the 30 m pixel view in ADR 0003. It reuses the fetch cache,
+class groups, `convert.conversion_masks` and the default filters of
+`cropconv.run`, so converted hectares match the 1 km totals' definition
+(the log prints them per interval and target). Pure Python (shapely,
+mapbox-vector-tile, pmtiles); no tippecanoe or sudo needed. About 4
+minutes and 1.3 GB peak memory for the test area with all four targets.
+
+- Format: PMTiles v3, gzip MVT in EPSG:3857, zoom 11 to 14 (`--min-zoom`,
+  `--max-zoom`; MapLibre overzooms past 14), one layer named `converted`.
+- Features: 4-connected patches of converted pixels per (interval, target,
+  natural class), properties `interval` (baseline year, number), `target`
+  (crop, pasture, urban, barren) and `class` (forest, grassland, wetland,
+  shrubland). The interval runs from `interval` to the latest year (archive
+  metadata `latest`).
+- Simplification: exact 30 m outlines at zoom 14; below that,
+  topology-preserving simplification at half a screen pixel, and patches
+  under half a screen pixel of area are dropped.
+- Flags: `--latest`, `--targets`, plus the filter flags of `cropconv.run`.
+  The service legend check is skipped (rasters come from the cache);
+  `--check-legend` turns it on. Only the `sk-mb-estevan-melville` area is
+  supported so far.

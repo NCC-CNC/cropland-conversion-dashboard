@@ -77,15 +77,15 @@ def log(*a):
     print(*a, file=sys.stderr, flush=True)
 
 
-def load_stack(raster_bbox, years, rows):
+def load_stack(raster_bbox, years, rows, check_legend=True):
     """Fetch and read all years; returns {year: group array} and {year: natural idx array}."""
     group_lut, natural_lut = cl.build_luts(rows)
     known = {r["code"] for r in rows}
     groups, naturals, legend_log = {}, {}, {}
     shape = None
     for y in years:
-        problems = cl.check_legend_labels(fx.service_legend_labels(y), rows)
-        legend_log[y] = problems or "ok"
+        problems = cl.check_legend_labels(fx.service_legend_labels(y), rows) if check_legend else []
+        legend_log[y] = problems or ("ok" if check_legend else "skipped")
         if problems:
             log(f"WARNING legend check {y}: {problems}")
         path = fx.fetch_year(y, raster_bbox)
@@ -131,12 +131,17 @@ def describe_method(latest, params, persist_years, targets=("crop",)):
         f"isolated patches smaller than {params.min_patch_ha:g} ha (connected pixels, 30 m) are removed"
         if params.min_patch_ha > 0 else "no minimum patch size was applied"
     )
-    used = "crop, pasture or urban" if params.exclude_prior_pasture_urban else "crop"
     prior = (
-        f"natural cover in a baseline year excludes cells already mapped as {used} in an earlier snapshot "
+        "natural cover in a baseline year excludes cells already mapped as crop in an earlier snapshot "
         "(likely fallow, forage rotation or mapping error; the 2011 baseline has no earlier snapshot)"
         if params.exclude_prior_crop else "cells that were crop in an earlier snapshot are not excluded from the baseline"
     )
+    if params.exclude_prior_pasture_urban:
+        prior += (
+            "; natural cover also excludes cells already mapped as pasture or forage or urban in an earlier snapshot "
+            "(likely tame grass, hay or developed land rather than natural cover), so figures are lower than in "
+            "earlier versions of this dashboard, which did not apply this rule"
+        )
     maj = "a 3x3 majority filter is applied first" if params.majority else "no majority filter is applied"
     pasture = (
         "Pasture and forage (ACI 122) counts as crop."
@@ -359,14 +364,14 @@ def summarise(out, intervals_meta, area_total, legend_log, targets=("crop",)):
 
 
 PRESETS = [
-    ("1. No filter at all", dict(persistence=False, min_patch_ha=0.0, majority=False, exclude_prior_crop=False)),
-    ("2. Persistence only", dict(persistence=True, min_patch_ha=0.0, majority=False, exclude_prior_crop=False)),
-    ("3. Persistence + 0.5 ha patches", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=False)),
-    ("4. Default: 3 + exclude prior crop", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=True)),
-    ("5. As default, 2 ha patches", dict(min_patch_ha=2.0)),
-    ("6. As default, plus 3x3 majority filter", dict(majority=True)),
-    ("7. As default, pasture/forage counted as crop", dict(pasture_is_crop=True)),
-    ("8. As default, also exclude prior pasture and urban", dict(exclude_prior_pasture_urban=True)),
+    ("1. No filter at all", dict(persistence=False, min_patch_ha=0.0, majority=False, exclude_prior_crop=False, exclude_prior_pasture_urban=False)),
+    ("2. Persistence only", dict(persistence=True, min_patch_ha=0.0, majority=False, exclude_prior_crop=False, exclude_prior_pasture_urban=False)),
+    ("3. Persistence + 0.5 ha patches", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=False, exclude_prior_pasture_urban=False)),
+    ("4. 3 + exclude prior crop (default until 2026-11-26)", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=True, exclude_prior_pasture_urban=False)),
+    ("5. Default: 4 + exclude prior pasture and urban", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=True, exclude_prior_pasture_urban=True)),
+    ("6. As default, 2 ha patches", dict(min_patch_ha=2.0)),
+    ("7. As default, plus 3x3 majority filter", dict(majority=True)),
+    ("8. As default, pasture/forage counted as crop", dict(pasture_is_crop=True)),
 ]
 
 
@@ -386,7 +391,7 @@ def sensitivity_table(groups, naturals, latest, years, pm2, base_params, cells, 
             ha = float(conv["crop"].sum() * pm2 / 1e4)
             nha = float((nat > 0).sum() * pm2 / 1e4)
             vals.append(f"{ha:,.0f} ({100 * ha / nha:.1f}%)")
-            if name.startswith("4."):
+            if name.startswith("5."):
                 nat_line.append(f"{b}: {nha:,.0f}")
         print(f"| {name} | " + " | ".join(vals) + " |")
     print("Baseline natural ha under the default: " + ", ".join(nat_line))
@@ -402,9 +407,9 @@ def main(argv=None):
     ap.add_argument("--majority", action="store_true")
     ap.add_argument("--keep-prior-crop", action="store_true",
                     help="do not drop baseline natural cells that were crop in an earlier snapshot")
-    ap.add_argument("--exclude-prior-pasture-urban", action="store_true",
-                    help="also drop baseline natural cells that were pasture or urban in an earlier snapshot "
-                         "(owner decision 2026-11-26; changes crop figures, so off until the data PR)")
+    ap.add_argument("--keep-prior-pasture-urban", action="store_true",
+                    help="do not drop baseline natural cells that were pasture or urban in an earlier snapshot "
+                         "(they are dropped by default since 2026-11-26)")
     ap.add_argument("--targets", default=",".join(cl.TARGETS),
                     help="comma separated conversion targets to write (default: %(default)s)")
     ap.add_argument("--pasture-is-crop", action="store_true")
@@ -414,7 +419,7 @@ def main(argv=None):
         persistence=not a.no_persistence, min_patch_ha=a.min_patch_ha,
         majority=a.majority, pasture_is_crop=a.pasture_is_crop,
         exclude_prior_crop=not a.keep_prior_crop,
-        exclude_prior_pasture_urban=a.exclude_prior_pasture_urban,
+        exclude_prior_pasture_urban=not a.keep_prior_pasture_urban,
     )
     targets = [t.strip() for t in a.targets.split(",") if t.strip()]
     bad = [t for t in targets if t not in cl.TARGETS]

@@ -210,13 +210,16 @@ def test_unknown_target():
 
 def test_baseline_exclusion_rules():
     nat_idx = np.ones((4, 4), dtype=np.uint8)
-    for earlier_group, dropped_by_default in [(CROP, True), (PASTURE, False), (URBAN, False), (BARREN, False)]:
+    assert cv.FilterParams().exclude_prior_pasture_urban  # on by default
+    keep = cv.FilterParams(exclude_prior_pasture_urban=False)  # opt-out: the earlier behaviour
+    for earlier_group, dropped_by_keep in [(CROP, True), (PASTURE, False), (URBAN, False), (BARREN, False)]:
         earlier = [block(grid(4, 4), 0, 2, 0, 4, earlier_group)]
+        # default: crop, pasture and urban remove the cell, barren never does
         out = cv.clean_baseline(nat_idx, earlier, cv.FilterParams())
-        assert (out[:2].sum() == 0) == dropped_by_default, cl.GROUPS[earlier_group]
-        # switch on: pasture and urban also remove the cell, barren never does
-        out = cv.clean_baseline(nat_idx, earlier, cv.FilterParams(exclude_prior_pasture_urban=True))
         assert (out[:2].sum() == 0) == (earlier_group != BARREN), cl.GROUPS[earlier_group]
+        # opt-out: only crop removes the cell
+        out = cv.clean_baseline(nat_idx, earlier, keep)
+        assert (out[:2].sum() == 0) == dropped_by_keep, cl.GROUPS[earlier_group]
         # all switches off: nothing removed
         off = cv.FilterParams(exclude_prior_crop=False, exclude_prior_pasture_urban=False)
         assert cv.clean_baseline(nat_idx, earlier, off).all()

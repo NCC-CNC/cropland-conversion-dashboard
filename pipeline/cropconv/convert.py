@@ -27,10 +27,10 @@ class FilterParams:
     eight_connected: bool = True   # patch connectivity
     exclude_prior_crop: bool = True  # baseline natural excludes cells crop in an earlier snapshot
     # also exclude cells that were pasture or urban in an earlier snapshot (barren is never
-    # excluded: it flickers with roads and bare soil). Owner decision 2026-11-26 is to exclude
-    # them, but doing so changes crop figures (Stettler 2016 to 2025 falls from 3,888 to 1,257 ha),
-    # so it is off by default until the data PR re-baselines the published numbers.
-    exclude_prior_pasture_urban: bool = False
+    # excluded: it flickers with roads and bare soil). On by default since the owner decision of
+    # 2026-11-26; this lowers crop figures (Stettler 2016 to 2025 falls from 3,888 to 1,257 ha).
+    # Set False (--keep-prior-pasture-urban) to restore the earlier behaviour.
+    exclude_prior_pasture_urban: bool = True
 
 
 def is_crop(group_arr: np.ndarray, pasture_is_crop: bool = False) -> np.ndarray:
