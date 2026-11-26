@@ -1,6 +1,7 @@
 # 03 Using AAFC Land Use Time Series to improve Annual Crop Inventory accuracy
 
-Status: draft recommendations for discussion. Nothing here is built into the
+Status: draft recommendations for discussion, product facts verified
+2026-11-26 against the AAFC data product specification. Nothing here is built into the
 dashboard. Tracks issue #31. Requested in client feedback of 2026-11-26.
 
 ## Purpose
@@ -16,21 +17,51 @@ remain, both already listed as caveats:
 
 This note proposes how the AAFC Land Use Time Series (LUTS) could reduce both.
 
-## What each product is (as understood, to be verified)
+## What each product is
 
-- ACI: annual 30 m crop and land cover maps. Started in 2009 on the Prairies
-  (56 m in 2009 and 2010), whole agricultural extent from 2011. Stated overall
-  accuracy target of at least 85%. Includes wetland, grassland, shrubland,
-  peatland and pasture and forage classes.
-- LUTS: 30 m land use at 5 year steps (published services for 2000, 2005,
-  2010, 2015, 2020), described by AAFC as a curated meta-analysis of several
-  high-quality datasets built with an incremental, pixel-history approach that
-  uses imagery checks.
+Checked on 2026-11-26 against the AAFC Land Use ISO 19131 data product
+specification (Revision A) and the Open Canada records for both products.
 
-Not yet confirmed from the data product specification (ISO 19131) and to check
-before relying on any recommendation below: per-class accuracy for wetland and
-grassland in either product, the LUTS class legend and minimum mapping unit,
-how much of LUTS is itself derived from ACI, and licence terms.
+- ACI: annual 30 m crop and land cover maps, 2009 to 2025 (56 m in 2009 and
+  2010). Stated overall accuracy target of at least 85%. Licence: Open
+  Government Licence Canada. Not confirmed from the record page: coverage by
+  year (Prairies only in 2009 and 2010, whole agricultural extent from 2011)
+  and the per-class accuracy; the class list sits in a linked CSV not yet read.
+- AAFC Land Use (the note calls it LUTS): 30 m GeoTIFF maps for 2000, 2005,
+  2010, 2015 and 2020, each "circa" its year (the 2010 map can represent 2010
+  to 2011). Coverage is Canada south of 60 degrees N. Described by the
+  specification as a curated meta-analysis of several high-quality datasets,
+  built incrementally from consolidated pixel histories with visual checks in
+  imagery. Inputs span 1990 to 2021 (the Open Canada record says 2000 to
+  2021). Licence: Open Government Licence Canada, no warranty. The
+  specification says updates are ongoing, so record the version and download
+  date when used.
+
+## What the specification says that affects the recommendations
+
+- Accuracy: no per-class or overall accuracy figures are given for Land Use.
+  Thematic accuracy is an as-is disclaimer, and logical consistency and
+  positional accuracy are "not defined at this time". No ACI per-class accuracy
+  was found either. Per-class accuracy for wetland and grassland remains
+  unknown for both products.
+- Differencing warning: the specification says that differencing maps is not an
+  adequate way to quantify change without an accuracy assessment of the change
+  pixels, and that change pixels are always a mix of real change and
+  uncertainty. This applies to the dashboard's own method and belongs in its
+  caveats.
+- Legend: Land Use follows IPCC categories with regional subclasses. Grassland
+  and shrubland are merged (regional codes 63 to 69), forest wetland (42) is
+  separate from wetland (73 to 79), and cropland (51) is "annual and perennial"
+  with no separate pasture and forage class. Newer classes (for example 52 and
+  56 from 2015, 55 from 2010) do not exist in early epochs, so full series
+  comparison is not possible for them.
+- No ACI crosswalk is provided and no minimum mapping unit is stated (30 m
+  pixels only).
+- Dependence on ACI: ACI 2010 to 2020 is the first listed input, alongside
+  other datasets such as GLAD cropland expansion. The share is not quantified.
+  The 2000 and 2005 maps predate ACI, so they are more independent for
+  baselines. Land Use also carries its own "land converted to cropland"
+  classes (55 and 56), which overlap the dashboard's purpose.
 
 ## Recommendations, in suggested order
 
@@ -39,7 +70,10 @@ how much of LUTS is itself derived from ACI, and licence terms.
 Use ACI only for the crop signal (where it is strongest). For the "by natural
 class" split, assign each converted cell its class from the LUTS epoch nearest
 the baseline year. This targets caveat 1 directly: the class split would not
-depend on ACI label drift. Lowest effort, easiest to explain.
+depend on ACI label drift. Lowest effort, easiest to explain. Limit found on
+verification: Land Use merges grassland and shrubland, so shrubland could not
+be reported separately from this route, and it would need a crosswalk and a
+decision on forest wetland.
 
 ### R2. Temporal consistency filter on ACI natural classes
 
@@ -74,8 +108,10 @@ agreement between the two is not independent proof of accuracy.
 ### R6. Settle the pasture and forage question first
 
 Whether tame pasture and forage count as crop changes results by about 2x
-(see the handoff of 2026-11-20). LUTS land use categories may help separate
-cultivated forage from native grassland. Decide this before tuning anything
+(see the handoff of 2026-11-20). Land Use has no separate pasture and forage class
+(cropland 51 includes perennial crops), so it is unlikely to settle this; the
+specification does separate managed and unmanaged grassland in its summary
+table, which may be worth testing. Decide this before tuning anything
 else.
 
 ## Risks and constraints
@@ -100,9 +136,11 @@ per rule. Judge against an independent sample, not against LUTS.
 ## Sources consulted
 
 - AAFC Land Use dataset record on Open Canada:
-  <https://ouvert.canada.ca/data/dataset/fa84a70f-03ad-4946-b0f8-a3b481dd5248>
+  <https://open.canada.ca/data/en/dataset/fa84a70f-03ad-4946-b0f8-a3b481dd5248>
 - AAFC Annual Crop Inventory record:
   <https://open.canada.ca/data/en/dataset/ba2645d5-4458-414d-b196-6303ac06c1c9>
 - Earth Engine catalog entry for AAFC ACI:
   <https://developers.google.com/earth-engine/datasets/catalog/AAFC_ACI>
+- AAFC Land Use ISO 19131 Data Product Specification, Revision A:
+  <https://agriculture.canada.ca/atlas/data_donnees/landuse/supportdocument_documentdesupport/en/ISO_19131_AAFC_Land_Use_Data_Product_Specification.pdf>
 - Huffman et al., integration of Canadian land use datasets (EARSeL 2015).
