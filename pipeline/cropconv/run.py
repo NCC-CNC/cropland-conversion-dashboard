@@ -198,7 +198,8 @@ def describe_method(latest, params, persist_years, targets=("crop",)):
 
 
 CAVEATS = [
-    "Crop is mapped with reported accuracy of 85 to 90 percent or more by AAFC, but natural classes such as grassland, wetland and shrubland are mapped less accurately. Small differences are within map error.",
+    "The split of natural cover by class (forest, shrubland, grassland, wetland) is unreliable across years. It can swing by tens of thousands of hectares without any real change, so treat the by-class rows as indicative and the total as more reliable than the split. Crop itself is mapped with reported accuracy of 85 to 90 percent or more.",
+    "The 2025 map classifies non-crop land differently from earlier years: shrubland almost disappears and wetland increases. This can distort by-class results for recent intervals, while crop detection is much less affected.",
     "The Annual Crop Inventory classification method and ground data changed over the series, so some change between years is a mapping artefact rather than a land change. Early years (2011) are the least reliable.",
     "These results compare two maps, and the difference between two maps always mixes real land change with mapping error. Figures are estimates until they are checked against independent data.",
     "Native grassland cannot be separated from tame grass and pasture. Conversion to pasture or hay is not counted as crop, and some grassland counted here may be tame.",
@@ -226,10 +227,10 @@ TARGET_CAVEATS = {
     ),
 }
 
-# CAVEATS entries 2 and 3 describe a crop-only run; they are replaced when other targets are reported.
+# CAVEATS entries 3 and 4 describe a crop-only run; they are replaced when other targets are reported.
 MULTI_TARGET_CAVEATS = {
-    2: "Native grassland cannot be separated from tame grass and pasture, and some grassland counted here may be tame.",
-    3: (
+    3: "Native grassland cannot be separated from tame grass and pasture, and some grassland counted here may be tame.",
+    4: (
         "Each conversion target is detected separately from natural cover, and a cell counts in one target only. "
         "Natural cover lost to water or other uses is not shown, and land returning to natural cover is not subtracted."
     ),
