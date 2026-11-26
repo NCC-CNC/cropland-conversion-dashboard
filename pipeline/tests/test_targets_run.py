@@ -74,7 +74,7 @@ def test_caveats_only_for_present_targets():
     c = rn.build_caveats(cl.TARGETS)
     assert all(rn.TARGET_CAVEATS[t] in c for t in ("pasture", "urban", "barren"))
     # the crop-only statements that would now be wrong are replaced
-    assert rn.CAVEATS[3] not in c and rn.CAVEATS[2] not in c
+    assert rn.CAVEATS[4] not in c and rn.CAVEATS[3] not in c
     assert all(chr(0x2014) not in s for s in c)
 
 
