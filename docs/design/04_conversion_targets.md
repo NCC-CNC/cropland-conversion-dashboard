@@ -72,6 +72,74 @@ any filter setting.
   5 MB guideline in the data contract before building.
 - Existing `--pasture-is-crop` stays as a sensitivity option only.
 
+## Build plan (crop, pasture, urban, barren)
+
+Written 2026-11-26 against the code as it stands. Three small PRs, in order,
+so the live site never sees a half-changed contract.
+
+### PR A: pipeline and contract
+
+- `classes.csv` / `classes.py`: add a `target` column (`crop`, `pasture`,
+  `urban`, `barren`, or empty). `GROUPS` already has `pasture`; urban and
+  barren need their own groups so ACI codes map to one target only. Extend the
+  loader checks (one target per code, only non-natural codes have a target).
+- `convert.py`: `is_crop` becomes `is_target(group_arr, target, params)`.
+  `conversion_mask` takes a target and returns one mask per target; the same
+  filters (persistence, patch size, majority) run per target. `pasture_is_crop`
+  stays for sensitivity runs and only changes the crop target.
+- Prior-use exclusion: `clean_baseline` today drops baseline natural cells that
+  were crop earlier. Decide whether earlier pasture, urban or barren also
+  removes a cell from the baseline (recommended: yes for pasture and urban,
+  since a natural label on land that was already used is more likely a mapping
+  error; keep a switch for the sensitivity table).
+- Target precedence: one cell, one target. Targets are disjoint by
+  construction because they key on the latest class, so no tie rule is needed.
+  A cell that is natural, then crop, then pasture counts as pasture only if the
+  persistence year is also pasture.
+- `aggregate.py`: `converted_counts` is called per target. `run.py` writes
+  `converted_ha` as `{target: {class: [...]}}`, drops all-zero target/class
+  arrays, and writes `targets` and `contract_version` to `meta.json`.
+- Per-target caveats in `CAVEATS` (pasture, urban, barren lower confidence),
+  shown only when that target is present.
+- Tests: mask disjointness across targets; a synthetic stack where the same
+  cell flips natural to pasture, natural to crop and natural to urban; schema
+  test that old flat files still validate; size test against the 5 MB guide.
+- Docs: update `02_mvp_data_contract.md` (nested `converted_ha`, `targets`,
+  `contract_version`, rule that a missing `targets` means crop only).
+
+### PR B: web app
+
+- `types.ts`: `converted_ha` is `ClassArrays | Record<string, ClassArrays>`;
+  `Meta` gains optional `targets`. Add one normaliser in `data.ts` that turns
+  the flat form into `{crop: ...}` on load, so the rest of the code sees one
+  shape.
+- `summary.ts`: `summarize` takes the active target (default `crop`) and also
+  returns a compact per-target total for the headline rows. `grid.ts` (map
+  shading) uses the active target.
+- `csv.ts` and `report.ts`: add a target column and one results table per
+  target, with the lower-confidence wording under pasture, urban and barren.
+- `main.ts` / `render.ts`: headline card stays "Habitat converted to cropland",
+  with pasture, urban and barren rows beneath it. Target tabs above the class
+  table. Keep keyboard and screen reader behaviour of the existing table.
+- Tests in `lib.test.ts` for the normaliser, per-target sums, and the CSV.
+
+### PR C: data
+
+- Regenerate `ab-parkland-stettler` and `demo-fixture` with the new contract
+  and check the crop figures are unchanged to rounding.
+- Generate `sk-mb-estevan-melville`, check `cells.json` size, and add it to
+  `areas.json` once the owner agrees to publish. Run `pages.yml` by hand,
+  since auto-merge does not deploy.
+
+### Order of risk
+
+1. Crop figures must not move: assert equality against the current Stettler
+   output in PR A before anything else.
+2. Pasture is the largest new number (about 2x crop on the test area), so it
+   gets the clearest wording and is never summed into the crop headline.
+3. Urban and barren may be dominated by roads, rail and well pads flickering
+   between years. Look at the test-area maps before publishing those two.
+
 ## Risks
 
 - Urban and barren classes in ACI are not mapped with the same care as crop.
@@ -86,3 +154,4 @@ any filter setting.
 
 - Is a single "other conversion" total also wanted for the headline?
 - Does the confidence caveat need wording from the owner?
+- Should earlier pasture, urban or barren remove a cell from the natural baseline (see PR A)?
