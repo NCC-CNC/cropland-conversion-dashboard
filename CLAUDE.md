@@ -24,14 +24,15 @@ See `docs/design/00_project_brief.md` for the full brief.
 ## Project status
 
 MVP live on GitHub Pages: web app in `web/`, real ACI data for one test window
-(Alberta Parkland near Stettler) from the pipeline in `pipeline/`. The UI has had a
-client-demo polish pass (see `docs/handoffs/2026-11-20_ui-polish.md`) and client
-feedback is tracked in issues #25 to #31 (see `docs/handoffs/2026-11-26_client-feedback.md`). Merges
+(Alberta Parkland near Stettler) from the pipeline in `pipeline/`. The pipeline
+and web app now support four conversion targets (crop, pasture, urban, barren),
+an SK/MB test area and Interlake window, ecoregion regions, 100 km tiling and a
+province summary, all merged but not yet published or read by the web app (see
+`docs/build-list.md` and `docs/handoffs/2026-11-26_build-session.md`). Merges
 by the auto-merge workflow do not trigger Pages; run
 `gh workflow run pages.yml --ref main` until `AUTO_MERGE_TOKEN` is set. Next:
-validate conversion rates against independent sources, settle the noise
-filter defaults, and widen coverage. Open GitHub issues are the live task
-tracker.
+web region picker and tile loading, the 30 m map layer, then regenerate and
+publish data. Open GitHub issues and the build list are the live task tracker.
 
 ## Scope
 
