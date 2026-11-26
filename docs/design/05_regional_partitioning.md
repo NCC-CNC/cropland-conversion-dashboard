@@ -1,6 +1,7 @@
 # 05 Manitoba and Saskatchewan coverage and partitioning
 
-Status: proposal. Tracks issue #28. Requested in client feedback of 2026-11-26.
+Status: proposal, with the region list and tile format decided (below).
+Tracks issue #28. Requested in client feedback of 2026-11-26.
 
 ## Request
 
@@ -22,16 +23,10 @@ Decision (2026-11-26): combine regional choice with fixed tiles.
 
 ### Layout
 
-```text
-web/public/data/<dataset_id>/
-  meta.json              dataset description, snapshots, targets, tile scheme
-  regions.json           [{id, name, bbox}]
-  tiles/<z>/<x>_<y>.json one cells file per tile that has any data
-  tiles/index.json       list of existing tiles, so empty ones are never fetched
-```
-
-`areas.json` becomes `regions.json` within a dataset. Existing single-area
-folders keep working until migrated.
+Superseded by the tile format below (ADR 0004). The first sketch used a
+zoom pyramid and a per-dataset `regions.json`; neither is needed, because
+regions are tagged on each cell and the ecoregion list is one shared file.
+Existing single-area folders keep working.
 
 ### Web changes
 
@@ -121,3 +116,96 @@ Caveat: the ecoregion source is coarse (1:1M, 2003) and the provincial
 boundary is coarse, so cell assignment near region edges is approximate, and a
 small share of cells near the edge of the farming zone or a province border may
 have no region. Do not present region edges as exact.
+
+## Tile format (decided 2026-11-26, build item 16)
+
+Decision record: `docs/decisions/0004-tiled-cell-data.md`. Built by
+`python -m cropconv.run --area <id> --tiled [KM]` (`pipeline/cropconv/tiling.py`),
+which writes tiles and `index.json` instead of `cells.json`. Contract version 3.
+
+```text
+web/public/data/<area_id>/
+  meta.json              as before, plus contract_version 3, tiled true, tile_km
+  index.json             tiles, regions and region totals
+  tiles/<col>_<row>.json one file per non-empty tile, for example tiles/-6_1.json
+```
+
+- **Tile grid**: 100 km squares in EPSG:3978, edges at multiples of 100 000 m,
+  so tiles are aligned to the 1 km grid. `col = floor(x / 100000)` and
+  `row = floor(y / 100000)` of the cell centre (row grows northward, both can
+  be negative). A cell is in exactly one tile. The option takes another size in
+  km; a dataset must use one size.
+- **Tile file**: the `cells.json` shape (`lon`, `lat`, `area_ha`, `intervals` with
+  nested `converted_ha` by target), plus `region`, an integer per cell that
+  indexes `index.json` `regions` (-1 for a cell in no region). Readers that
+  ignore `region` sum tiles exactly as they sum `cells.json`.
+- **index.json**: tile `bbox` is the WGS84 extent of the tile's cells (not the
+  full square), for intersection tests. Tile `regions` maps the region ids
+  present in the tile to cell counts. `region_summary` lists regions with cells
+  in this area, the tiles to fetch to cover a picked region, and pre-summed
+  totals per interval, target and class (a province summary can reuse them).
+  `unassigned` has the cell count, and totals, for cells in no region.
+  `regions` lists every ecoregion id in sorted order, so a tile's `region`
+  integers mean the same in every area.
+
+```json
+{
+  "area_id": "sk-mb-estevan-melville",
+  "contract_version": 3,
+  "crs": "EPSG:3978",
+  "tile_m": 100000,
+  "cell_size_m": 1000,
+  "cells": 21652,
+  "regions": ["aspen-parkland-mb", "aspen-parkland-sk", "..."],
+  "region_summary": [
+    {"id": "aspen-parkland-sk", "name": "Aspen Parkland", "cells": 16041, "area_ha": 1600000.0,
+     "tiles": ["-6_0", "-6_1"],
+     "totals": {"2016-2025": {"natural_ha": {"forest": 0.0}, "converted_ha": {"crop": {"forest": 0.0}}}}}
+  ],
+  "unassigned": {"cells": 0},
+  "tiles": [
+    {"id": "-6_1", "col": -6, "row": 1, "file": "tiles/-6_1.json",
+     "bbox": [-103.2531, 49.5708, -101.9581, 50.5542], "cells": 6475, "bytes": 1799430,
+     "regions": {"aspen-parkland-sk": 6348, "moist-mixed-grassland-sk": 127}}
+  ]
+}
+```
+
+Values in the example are shortened. `totals` has the targets and classes
+that the area's `cells.json` arrays would have, so a class can sum to zero in
+one region.
+
+### A non-tiled area
+
+An area with no `index.json` (and no `tiled` in `meta.json`) is read from
+`cells.json` as today, at contract version 1 or 2. A reader should treat
+`meta.tiled` as the switch.
+
+### Measured on the SK/MB test area (21,652 cells, all four targets)
+
+The single `cells.json` is 5.98 MB raw (about 280 bytes per cell). Summing all
+tiles reproduces it exactly for every array, so every target, class and
+interval (`math.fsum` on the real run, and a unit test on a synthetic grid).
+
+|Tile size|Tiles|Raw median|Raw max|Gzip median|Gzip total|
+|---|---|---|---|---|---|
+|100 km (chosen)|6|753 KB|1,799 KB|76 KB|0.57 MB|
+|50 km|16|326 KB|628 KB|30 KB|0.59 MB|
+
+The test area is a rectangle, so its edge tiles are partial; a full 100 km
+tile at this density is about 1.8 MB raw, so the 1 MB median target holds only
+where tiles are partial or sparser. Gzipped (what Pages serves) a full tile is
+about 0.2 MB. `index.json` is 7 KB for 6 tiles, about 0.3 KB per tile. All
+cells fell inside a region on this area. Extrapolating about 1.3 million cells
+at 280 bytes gives about 360 MB raw and under 50 MB gzipped, well under the
+1 GB Pages limit.
+
+### What the web loader and province summary need
+
+- Read `meta.json`; if `tiled`, fetch `index.json` once, otherwise `cells.json`.
+- For a drawn polygon, fetch tiles whose `bbox` intersects its bounding box and
+  sum cells with centre inside the polygon, as today. For a picked region, use
+  `region_summary[].tiles` and keep cells whose `region` index matches.
+- A province summary can add `region_summary[].totals` over the regions of a
+  province (the id ends in `-mb` or `-sk`) without loading tiles. Cells in no
+  region are in `unassigned` only.
