@@ -12,6 +12,8 @@ export interface Interval {
   from: number;
   to: number;
   years: number;
+  /** Optional plain-language caution for this interval, shown with the interval, report and CSV. */
+  note?: string;
 }
 
 export interface Meta {

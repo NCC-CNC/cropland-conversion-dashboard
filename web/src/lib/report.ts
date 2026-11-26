@@ -1,4 +1,5 @@
 import { cap, fmtHa, fmtPct } from './format';
+import { intervalNote } from './intervals';
 import { targetCaveats, targetLabel } from './targets';
 import type { Meta, PolygonGeometry, Summary } from './types';
 
@@ -64,6 +65,8 @@ export function buildReport(r: ReportInput): string {
   const caveats = targetCaveats(meta);
   summaries[0].intervals.forEach((first, k) => {
     out.push(`### ${first.from} to ${first.to} (${first.years} years)`, '');
+    const ivNote = intervalNote(meta, first.from, first.to);
+    if (ivNote) out.push(`**Caution:** ${ivNote}`, '');
     for (const s of summaries) {
       const iv = s.intervals[k];
       if (multi) out.push(`#### Natural habitat converted to ${targetLabel(s.target)}`, '');

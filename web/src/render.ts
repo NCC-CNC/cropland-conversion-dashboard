@@ -9,6 +9,7 @@ import {
   targetLabel,
   targetShort,
 } from './lib/targets';
+import { intervalNote, intervalTabLabel } from './lib/intervals';
 import type { IntervalSummary, Meta, PolygonGeometry, Summary } from './lib/types';
 
 // Colour-blind safe hues; rows and bars are also labelled directly, so colour is not the only cue.
@@ -147,7 +148,7 @@ export function renderSummary(
     );
   }
 
-  nodes.push(renderTabs(summary));
+  nodes.push(renderTabs(summary, meta));
   const panel = el('div');
   panel.id = 'tabpanel';
   panel.setAttribute('role', 'tabpanel');
@@ -164,6 +165,8 @@ export function renderSummary(
   classPanel.append(renderClasses(iv, summary.target, multi && isLowerConfidence(summary.target)));
   if (multi && caveat) classPanel.append(el('p', caveat, 'small caveat'));
   classPanel.append(renderChart(iv, summary.target));
+  const ivNote = intervalNote(meta, iv.from, iv.to);
+  if (ivNote) panel.append(note(`Caution for ${iv.from} to ${iv.to}: ${ivNote}`, 'warn'));
   panel.append(renderHero(iv));
   if (multi) {
     panel.append(renderOthers(iv, targets));
@@ -250,13 +253,13 @@ function makeTablist(opts: {
   return tabs;
 }
 
-function renderTabs(summary: Summary): HTMLElement {
+function renderTabs(summary: Summary, meta: Meta): HTMLElement {
   return makeTablist({
     group: 'interval',
     label: 'Time interval',
     idPrefix: 'tab',
     panelId: 'tabpanel',
-    names: summary.intervals.map((iv) => `${iv.from} to ${iv.to}`),
+    names: summary.intervals.map((iv) => intervalTabLabel({ ...iv, note: intervalNote(meta, iv.from, iv.to) })),
     current: selected,
     onPick: pick,
   });

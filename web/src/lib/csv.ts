@@ -50,6 +50,9 @@ export function buildCsv(summaries: Summary[], meta: Meta, selectedCells = summa
   }
   lines.push('');
   const caveats = targetCaveats(meta);
+  for (const iv of meta.intervals) {
+    if (iv.note) lines.push(esc(`Caution for ${iv.from} to ${iv.to}: ${iv.note}`));
+  }
   for (const s of summaries) {
     if (caveats[s.target]) lines.push(esc(`Note on ${s.target}: ${caveats[s.target]}`));
   }

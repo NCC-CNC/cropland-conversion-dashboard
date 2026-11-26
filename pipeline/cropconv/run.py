@@ -42,6 +42,8 @@ AREAS = {
     "sk-mb-estevan-melville": {
         "name": "SK/MB test area (Estevan, Melita, Russell, Melville)",
         "bbox_corners": True,  # rectangle around the four towns, see export_shapes
+        "interval_notes": {2011: "The 2011 map shows about 40 percent more natural cover than 2016 in this area, so "
+                                 "this interval is unreliable. Prefer the 2016 and 2021 baselines."},
         "extra_caveats": [
             "The 2011 to 2025 interval for this area is unreliable: the 2011 map shows far more natural cover than 2016 "
             "(about 40 percent more at the same filter settings), so much of the apparent conversion is likely a "
@@ -323,7 +325,8 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, 
             "natural_ha": {c: agg.to_ha(nat_counts[b][c], pixel_ha, keep) for c in cl.NATURAL_CLASSES},
             "converted_ha": converted,
         }
-        intervals_meta.append({"from": b, "to": latest, "years": latest - b})
+        intervals_meta.append({"from": b, "to": latest, "years": latest - b,
+                               **({"note": cfg["interval_notes"][b]} if b in cfg.get("interval_notes", {}) else {})})
 
     # bbox of the full grid in WGS84
     corners = [(grid[0], grid[1]), (grid[2], grid[1]), (grid[2], grid[3]), (grid[0], grid[3])]

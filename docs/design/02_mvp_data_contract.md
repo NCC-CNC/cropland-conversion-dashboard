@@ -69,6 +69,12 @@ farming zone covered, and `method`, `caveats` and dates copied from
 
 `intervals` always compare an earlier snapshot with the latest one.
 
+Each `intervals` entry may carry an optional `note` string (additive, issue 30,
+2026-11-26): a plain-language caution for that interval, for example that the
+2011 baseline is unreliable in the SK/MB test area. The web app shows it in the
+interval tab (labelled "caution"), above the summary, in the report and in the
+CSV. Readers ignore it if absent.
+
 `sensitivity` is optional and additive (issue 3, 2026-11-26); readers must
 ignore it if absent. It records whole-window crop conversion under eight
 preset noise filter settings (ids `no_filter`, `persistence`, `patch_0_5`,
