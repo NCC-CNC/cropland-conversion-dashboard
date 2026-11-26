@@ -13,7 +13,8 @@ import { visibleAreas } from './lib/areas';
 import { buildCsv } from './lib/csv';
 import { loadAreas, loadCells, loadMeta } from './lib/data';
 import { buildGrid } from './lib/grid';
-import { cellsInPolygon, polygonBBox, selectionStatus, summarize } from './lib/summary';
+import { cellsInPolygon, polygonBBox, selectionStatus, summarize, summarizeTargets } from './lib/summary';
+import { DEFAULT_TARGET, targetLabel } from './lib/targets';
 import type { AreaEntry, Cells, Meta, PolygonGeometry, Summary } from './lib/types';
 import { polygonAreaKm2 } from './lib/geo';
 import { buildReport } from './lib/report';
@@ -93,6 +94,8 @@ let cells: Cells | null = null;
 let summary: Summary | null = null;
 let areas: AreaEntry[] = [];
 let currentPoly: PolygonGeometry | null = null;
+let selectedIdx: number[] = [];
+let activeTarget = DEFAULT_TARGET;
 
 maplibregl.setWorkerUrl(`${import.meta.env.BASE_URL}maplibre/maplibre-gl-worker.mjs`);
 
@@ -143,7 +146,8 @@ function update(poly: PolygonGeometry | null): void {
   }
   const idx = cellsInPolygon(cells, poly);
   const status = selectionStatus(idx.length, polygonBBox(poly), meta.bbox);
-  summary = summarize(cells, meta, idx);
+  selectedIdx = idx;
+  summary = summarize(cells, meta, idx, activeTarget);
   if (status === 'outside-coverage' || status === 'no-natural-cells') {
     csvBtn.disabled = true;
     reportBtn.disabled = true;
@@ -156,7 +160,7 @@ function update(poly: PolygonGeometry | null): void {
   reportBtn.disabled = false;
   shareBtn.disabled = false;
   currentPoly = poly;
-  renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly), poly });
+  renderSummary(summaryEl, summary, meta, status, { areaKm2: polygonAreaKm2(poly), poly, onTarget: setTarget });
 }
 
 function setMode(mode: string): void {
@@ -360,6 +364,23 @@ function setupGridLayers(): void {
   });
 }
 
+function setLegendTitle(): void {
+  if (!meta) return;
+  const first = meta.intervals[0];
+  if (!first) return;
+  const what = activeTarget === DEFAULT_TARGET ? '' : ` to ${targetLabel(activeTarget)}`;
+  $('legend-title').textContent = `Converted ha per cell${what}, ${first.from} to ${first.to}`;
+}
+
+/** Switch the active conversion target: reshade the map, then recompute and redraw the summary. */
+function setTarget(target: string): void {
+  if (!meta || !cells || target === activeTarget) return;
+  activeTarget = target;
+  (map.getSource('grid') as maplibregl.GeoJSONSource).setData(buildGrid(cells, meta, activeTarget).data);
+  setLegendTitle();
+  update(currentPoly);
+}
+
 async function loadArea(id: string): Promise<void> {
   renderLoading(summaryEl);
   try {
@@ -373,8 +394,9 @@ async function loadArea(id: string): Promise<void> {
   draw.clear();
   setMode('static');
   resetInterval();
+  activeTarget = DEFAULT_TARGET;
   renderAbout(aboutBody, meta);
-  const grid = buildGrid(cells, meta);
+  const grid = buildGrid(cells, meta, activeTarget);
   (map.getSource('grid') as maplibregl.GeoJSONSource).setData(grid.data);
   map.fitBounds(
     [
@@ -386,9 +408,7 @@ async function loadArea(id: string): Promise<void> {
   if (grid.drawn < grid.total) {
     setHint(`Grid overlay thinned to ${grid.drawn} of ${grid.total} cells for speed. Summaries use every cell.`, 6000);
   }
-  const legendTitle = $('legend-title');
-  const first = meta.intervals[0];
-  if (first) legendTitle.textContent = `Converted ha per cell, ${first.from} to ${first.to}`;
+  setLegendTitle();
   update(null);
 }
 
@@ -414,14 +434,14 @@ function download(text: string, type: string, name: string): void {
 }
 
 csvBtn.addEventListener('click', () => {
-  if (!summary || !meta) return;
-  download(buildCsv(summary, meta), 'text/csv;charset=utf-8', `conversion-summary-${meta.area_id}.csv`);
+  if (!summary || !meta || !cells) return;
+  download(buildCsv(summarizeTargets(cells, meta, selectedIdx), meta, selectedIdx.length), 'text/csv;charset=utf-8', `conversion-summary-${meta.area_id}.csv`);
 });
 
 reportBtn.addEventListener('click', () => {
-  if (!summary || !meta || !currentPoly) return;
+  if (!summary || !meta || !cells || !currentPoly) return;
   const md = buildReport({
-    summary,
+    summaries: summarizeTargets(cells, meta, selectedIdx),
     meta,
     poly: currentPoly,
     areaKm2: polygonAreaKm2(currentPoly),
