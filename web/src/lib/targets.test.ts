@@ -149,6 +149,14 @@ describe('targetCaveats', () => {
   it('maps the trailing caveats onto the lower-confidence targets in order', () => {
     expect(targetCaveats(multiMeta)).toEqual({ pasture: PASTURE_CAVEAT, urban: URBAN_CAVEAT });
   });
+  it('prefers the keyed target_caveats, even with extra trailing caveats', () => {
+    const keyed = {
+      ...multiMeta,
+      caveats: [...multiMeta.caveats, 'extra area caveat'],
+      target_caveats: { urban: URBAN_CAVEAT, pasture: PASTURE_CAVEAT },
+    };
+    expect(targetCaveats(keyed)).toEqual({ pasture: PASTURE_CAVEAT, urban: URBAN_CAVEAT });
+  });
   it('is empty for a crop only area', () => {
     expect(targetCaveats(baseMeta)).toEqual({});
   });

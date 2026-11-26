@@ -27,6 +27,8 @@ export interface Meta {
   source: string;
   generated: string;
   caveats: string[];
+  /** Caveat text keyed by target id (lower-confidence targets only). Missing in older files. */
+  target_caveats?: Record<string, string>;
   /** Conversion targets present in the data. Missing means crop only (contract version 1). */
   targets?: string[];
   contract_version?: number;

@@ -67,6 +67,13 @@ def test_caveats_crop_only_is_unchanged():
     assert rn.build_caveats(["crop"]) == rn.CAVEATS
 
 
+def test_target_caveats_keyed_by_present_target():
+    assert rn.build_target_caveats(["crop"]) == {}
+    t = rn.build_target_caveats(["crop", "urban", "barren"])
+    assert t == {"urban": rn.TARGET_CAVEATS["urban"], "barren": rn.TARGET_CAVEATS["barren"]}
+    assert all(v in rn.build_caveats(["crop", "urban", "barren"]) for v in t.values())
+
+
 def test_caveats_only_for_present_targets():
     c = rn.build_caveats(["crop", "urban"])
     assert rn.TARGET_CAVEATS["urban"] in c

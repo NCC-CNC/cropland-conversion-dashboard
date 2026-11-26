@@ -54,6 +54,7 @@ farming zone covered, and `method`, `caveats` and dates copied from
   "source": "AAFC Annual Crop Inventory, OGL-Canada-2.0, URL",
   "generated": "ISO date",
   "caveats": ["list of strings shown in the UI"],
+  "target_caveats": {"pasture": "caveat text", "urban": "caveat text", "barren": "caveat text"},
   "sensitivity": {
     "target": "crop",
     "note": "plain-language caveat",
@@ -135,7 +136,12 @@ or any conversion. Cell centroids are WGS84.
   figures are lower than in earlier versions. Earlier barren never excludes a
   cell.
 - Caveats for pasture, urban and barren are in `meta.caveats` only when that
-  target is in `targets`.
+  target is in `targets`, and also in `meta.target_caveats`, an object keyed
+  by target id (only for targets present). This is additive, so
+  `contract_version` is unchanged. Readers use `target_caveats` and fall back,
+  for files without it, to pairing the last k entries of `caveats` with the
+  lower-confidence targets in `targets` order. That fallback is wrong for
+  areas that append `extra_caveats`, which the keyed form fixes.
 - The web app computes, for a polygon: sum of cells whose centroid lies inside,
   percent = converted / natural, annual rate = converted / years.
 

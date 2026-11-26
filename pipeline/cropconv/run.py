@@ -246,6 +246,11 @@ def build_caveats(targets):
     return caveats + [TARGET_CAVEATS[t] for t in targets if t in TARGET_CAVEATS]
 
 
+def build_target_caveats(targets):
+    """Caveat text keyed by target id, for each lower-confidence target present."""
+    return {t: TARGET_CAVEATS[t] for t in targets if t in TARGET_CAVEATS}
+
+
 def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, tile_km=None):
     cfg = AREAS[area_id]
     targets = [t for t in cl.TARGETS if t in (targets or cl.TARGETS)]
@@ -340,6 +345,7 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, 
         "source": SOURCE,
         "generated": datetime.date.today().isoformat(),
         "caveats": build_caveats(targets) + cfg.get("extra_caveats", []),
+        "target_caveats": build_target_caveats(targets),
     }
 
     sens_rows = sensitivity_rows(groups, naturals, latest, years, pm2, params)
