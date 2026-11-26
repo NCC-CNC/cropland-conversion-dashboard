@@ -152,6 +152,29 @@ so the live site never sees a half-changed contract.
 
 ## Open questions
 
-- Is a single "other conversion" total also wanted for the headline?
-- Does the confidence caveat need wording from the owner?
-- Should earlier pasture, urban or barren remove a cell from the natural baseline (see PR A)?
+- Caveat wording below is a draft awaiting owner review.
+
+## Decisions (2026-11-26, owner)
+
+- Earlier pasture and urban use removes a cell from the natural baseline, as
+  earlier crop does. Barren does not, because it flickers with roads and bare
+  soil. Keep a switch for sensitivity runs.
+- No combined "all conversion" total. Each target is reported separately.
+- Build of PR A is deferred until the owner says to start.
+
+## Draft caveat wording (for owner review)
+
+Shown under the matching rows and in the methods report, only when that target
+is present.
+
+- Pasture and forage: "Conversion to pasture and forage is less certain than
+  conversion to crop. Native grassland and seeded pasture look alike in the
+  Annual Crop Inventory, so some of this may be existing grass that was
+  reseeded or relabelled. It is not added to the cropland figure."
+- Urban and developed: "Conversion to urban and developed land is mapped less
+  accurately than crop. Roads, rail lines, well pads and small buildings can
+  appear and disappear between years, so treat small values as uncertain."
+- Barren and exposed land: "Conversion to barren and exposed land is the least
+  reliable target. Bare soil, gravel, dry wetlands and recently cleared land
+  are easily confused, and the label can change from year to year without a
+  real change on the ground."
