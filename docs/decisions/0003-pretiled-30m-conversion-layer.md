@@ -49,3 +49,33 @@ MB, which fits under the Pages limit of about 1 GB but would bloat the repo.
 Plan: keep test-area tiles in the repo; for province scale host the PMTiles as
 a release asset or object store (range requests are required). Re-measure
 with a real PMTiles build before committing to province scale.
+
+## Measured (2026-11-26)
+
+Real build with `python -m cropconv.export_tiles` on the SK/MB test area
+(intervals 2011, 2016, 2021 to 2025, default filters, zoom 11 to 14, gzip MVT,
+pure Python). Crop hectares match the 1 km pipeline (97,617, 21,324 and
+12,932 ha).
+
+|Build|Patches|PMTiles size|Wall time|Peak memory|
+|---|---|---|---|---|
+|Crop only, 3 intervals|133,000|11.1 MB|1 min 52 s|1.1 GB|
+|All 4 targets, 3 intervals|250,000|19.0 MB|4 min 8 s|1.3 GB|
+
+Tiles per zoom (non-empty):
+
+|Zoom|11|12|13|14|Total|
+|---|---|---|---|---|---|
+|Crop only|216|783|2,906|9,148|13,053|
+|All targets|216|792|2,996|10,218|14,222|
+
+- Crop only is 11 MB against the 21 MB raw GeoJSON estimate, so compression
+  and zoom simplification help, but by about half, not by an order of
+  magnitude. Patches are split per natural class and kept 4-connected, so the
+  count is higher than the estimate (133,000 against 85,000).
+- Pasture is the largest target (about 100,000 patches), which is why adding
+  the other three targets adds 8 MB. The test area at all targets is better
+  hosted as a release asset than committed; province scale (tens of times
+  larger) must not be committed.
+- The Python tile build is slow at scale (about 4 minutes here). Province
+  scale would want tippecanoe or a tiled build.
