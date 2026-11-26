@@ -35,11 +35,11 @@ with the owner on 2026-11-26.
 Converted 30 m pixels on the SK/MB test area (28,800 km2) at the default noise
 filter, from the pipeline's own masks, vectorised as 4-connected patches:
 
-| Interval | Converted ha | Patches | Vertices | Raw GeoJSON (est.) |
+|Interval|Converted ha|Patches|Vertices|Raw GeoJSON (est.)|
 |---|---|---|---|---|
-| 2011 to 2025 | 96,800 | 43,000 | 706,000 | about 13 MB |
-| 2016 to 2025 | 21,200 | 26,500 | 272,000 | about 5 MB |
-| 2021 to 2025 | 12,800 | 15,200 | 164,000 | about 3 MB |
+|2011 to 2025|96,800|43,000|706,000|about 13 MB|
+|2016 to 2025|21,200|26,500|272,000|about 5 MB|
+|2021 to 2025|12,800|15,200|164,000|about 3 MB|
 
 About 21 MB raw for the three intervals. PMTiles compression and zoom
 simplification should bring that well under that figure, but this was not
