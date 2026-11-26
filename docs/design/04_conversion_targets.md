@@ -185,13 +185,16 @@ is present.
   gives crop `converted_ha` identical to the published file, per cell (maximum
   difference 0.0 ha), and identical `natural_ha`.
 - The prior pasture and urban exclusion is implemented as
-  `FilterParams.exclude_prior_pasture_urban` (`--exclude-prior-pasture-urban`)
-  but is off by default. Turning it on changes crop, because the baseline
-  `natural_ha` shrinks. Stettler crop is unchanged at 3,464 ha for 2011 to
-  2025 (no earlier snapshot) and falls from 3,888 to 1,257 ha for 2016 to 2025
-  and from 1,599 to 560 ha for 2021 to 2025. The owner decision stands; the
-  switch is meant to be turned on in the data PR (PR C), so the published crop
-  numbers move once and with a documented reason.
+  `FilterParams.exclude_prior_pasture_urban`. It was off in PR A so crop stayed
+  unchanged, and is on by default from the follow-up change (2026-11-26,
+  owner decision); `--keep-prior-pasture-urban` restores the PR A behaviour.
+  Turning it on changes crop, because the baseline `natural_ha` shrinks.
+  Stettler crop is unchanged at 3,464 ha for 2011 to 2025 (no earlier
+  snapshot) and falls from 3,888 to 1,257 ha for 2016 to 2025 and from 1,599
+  to 560 ha for 2021 to 2025. On the SK/MB test area it falls from 21,353 to
+  15,358 ha (2016 to 2025) and from 12,936 to 4,474 ha (2021 to 2025). The
+  method text states the rule and that figures are lower than in earlier
+  versions; the published data changes in the data regeneration PR (PR C).
 - With `--pasture-is-crop` the pasture target is left out, so no hectare is
   counted twice.
 - Size: Stettler `cells.json` is 0.40 MB raw (0.06 MB gzipped, was 0.21 MB raw)

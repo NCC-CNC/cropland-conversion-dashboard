@@ -292,14 +292,14 @@ def main(argv=None):
     ap.add_argument("--no-persistence", action="store_true")
     ap.add_argument("--majority", action="store_true")
     ap.add_argument("--keep-prior-crop", action="store_true")
-    ap.add_argument("--exclude-prior-pasture-urban", action="store_true")
+    ap.add_argument("--keep-prior-pasture-urban", action="store_true")
     ap.add_argument("--pasture-is-crop", action="store_true")
     ap.add_argument("--check-legend", action="store_true", help="check the service legend (needs network)")
     a = ap.parse_args(argv)
     params = cv.FilterParams(
         persistence=not a.no_persistence, min_patch_ha=a.min_patch_ha, majority=a.majority,
         pasture_is_crop=a.pasture_is_crop, exclude_prior_crop=not a.keep_prior_crop,
-        exclude_prior_pasture_urban=a.exclude_prior_pasture_urban,
+        exclude_prior_pasture_urban=not a.keep_prior_pasture_urban,
     )
     targets = [t.strip() for t in a.targets.split(",") if t.strip()]
     bad = [t for t in targets if t not in cl.TARGETS]

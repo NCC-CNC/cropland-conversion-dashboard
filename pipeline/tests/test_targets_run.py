@@ -55,9 +55,9 @@ def test_prior_pasture_exclusion_on_stack():
     groups[2011] = groups[2011].copy()
     groups[2011][:, 2:4] = PASTURE  # earlier pasture where 2016 says natural and 2025 says pasture
     avail = [2011, 2016, 2021, 2024, 2025]
-    off = rn.interval_masks(groups, naturals, 2025, cv.FilterParams(min_patch_ha=0.0), PX_M2, avail)
-    on = rn.interval_masks(groups, naturals, 2025,
-                           cv.FilterParams(min_patch_ha=0.0, exclude_prior_pasture_urban=True), PX_M2, avail)
+    off = rn.interval_masks(groups, naturals, 2025,
+                            cv.FilterParams(min_patch_ha=0.0, exclude_prior_pasture_urban=False), PX_M2, avail)
+    on = rn.interval_masks(groups, naturals, 2025, cv.FilterParams(min_patch_ha=0.0), PX_M2, avail)
     assert off[2016][1]["pasture"].sum() == 12 and on[2016][1]["pasture"].sum() == 0
     assert off[2016][1]["crop"].sum() == on[2016][1]["crop"].sum() == 12  # crop figure unaffected here
     assert (on[2016][0][:, 2:4] == 0).all() and (on[2016][0][:, :2] > 0).all()
@@ -97,3 +97,16 @@ def test_method_text_names_targets():
 def test_contract_version_constant_and_json_roundtrip():
     assert rn.CONTRACT_VERSION == 2
     assert json.loads(json.dumps({"targets": cl.TARGETS}))["targets"] == cl.TARGETS
+
+
+def test_method_text_states_prior_pasture_urban_rule_only_when_on():
+    persist = {2011: 2016}
+    on = rn.describe_method(2025, cv.FilterParams(), persist, cl.TARGETS)
+    assert "mapped as pasture or forage or urban in an earlier snapshot" in on
+    assert "lower than in earlier versions of this dashboard" in on
+    off = rn.describe_method(2025, cv.FilterParams(exclude_prior_pasture_urban=False), persist, cl.TARGETS)
+    assert "pasture or forage or urban" not in off and "earlier versions" not in off
+    crop_on = rn.describe_method(2025, cv.FilterParams(), persist)
+    assert "pasture or forage or urban" in crop_on
+    assert "pasture or forage or urban" not in rn.describe_method(
+        2025, cv.FilterParams(exclude_prior_pasture_urban=False), persist)
