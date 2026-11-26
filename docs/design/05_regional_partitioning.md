@@ -42,6 +42,30 @@ about 1.3 million cells before dropping cells with no natural cover. Tiling
 keeps any single download small. Measure the real total on the test area
 first (issue #30) and extrapolate before committing to a tile size.
 
+### Measured sizes (2026-11-26)
+
+Four targets, default filters, baselines 2011, 2016 and 2021 to 2025. The
+Interlake window (id `mb-interlake`, 99.9 km square, about 10,000 km2, Gimli
+to Fisher Branch) was added as a forest, wetland and pasture heavy contrast to
+the farmland-dense SK/MB test area. It touches the Interlake Plain (about 69
+percent), Lake Manitoba Plain (16) and Mid-Boreal Lowland (14) ecoregions.
+
+|Area|km2|Cells kept|cells.json|gzipped|MB per 1,000 km2 (raw, gz)|PMTiles|
+|---|---|---|---|---|---|---|
+|SK/MB test area|28,800|n/a|6.87 MB|0.68 MB|0.239, 0.024|not built|
+|MB Interlake window|10,000|7,651|2.15 MB|0.24 MB|0.215, 0.024|2.16 MB|
+
+The expectation that forest and wetland country gives a larger file per km2
+did not hold: 76 percent of Interlake cells have natural cover, and per km2 the
+file is slightly smaller than in the SK/MB area, because most cells have zero
+conversion for the rarer targets and those arrays are sparse. The 5 MB to 10
+MB raw guideline per tile therefore corresponds to roughly 20,000 to 45,000
+km2 at about 0.22 to 0.24 MB per 1,000 km2, or 0.5 MB to 1.1 MB gzipped
+transfer. Province-wide (about 1.3 million km2 of MB and SK farmed and
+boreal land) would be roughly 300 MB raw and 30 MB gzipped before dropping
+empty cells, well inside the Pages limit. These are two windows, not a
+province sample; northern boreal cells with little change may be smaller.
+
 ## Hosting limits
 
 GitHub Pages sites are limited to about 1 GB. If the tiles exceed that,
@@ -68,30 +92,30 @@ written to `web/public/data/regions.json`, a small GeoJSON FeatureCollection
 from the per-dataset `regions.json` sketched in the layout above, which becomes
 a plain list of ids once cells carry a region id.
 
-| Property | Meaning |
-| --- | --- |
-| `id` | Stable slug of the name plus province code, for example `mixed-grassland-sk` |
-| `name` | Display name (the source typo "Manotoba" is fixed by an override table) |
-| `province` | `MB` or `SK` |
-| `ecoregion`, `ecozone` | National Ecological Framework codes |
-| `area_km2` | Clipped area before simplification, equal-area projection (Canada Albers) |
+|Property|Meaning|
+|---|---|
+|`id`|Stable slug of the name plus province code, for example `mixed-grassland-sk`|
+|`name`|Display name (the source typo "Manotoba" is fixed by an override table)|
+|`province`|`MB` or `SK`|
+|`ecoregion`, `ecozone`|National Ecological Framework codes|
+|`area_km2`|Clipped area before simplification, equal-area projection (Canada Albers)|
 
-| Id | Name | Area km2 |
-| --- | --- | --- |
-| aspen-parkland-mb | Aspen Parkland | 35,098 |
-| aspen-parkland-sk | Aspen Parkland | 81,009 |
-| boreal-transition-mb | Boreal Transition | 3,217 |
-| boreal-transition-sk | Boreal Transition | 53,976 |
-| cypress-upland-sk | Cypress Upland | 5,027 |
-| interlake-plain-mb | Interlake Plain | 39,922 |
-| lake-manitoba-plain-mb | Lake Manitoba Plain | 32,679 |
-| mid-boreal-lowland-mb | Mid-Boreal Lowland | 70,951 |
-| mid-boreal-lowland-sk | Mid-Boreal Lowland | 21,066 |
-| mid-boreal-uplands-mb | Mid-Boreal Uplands | 12,029 |
-| mid-boreal-uplands-sk | Mid-Boreal Uplands | 101,996 |
-| mixed-grassland-sk | Mixed Grassland | 86,494 |
-| moist-mixed-grassland-sk | Moist Mixed Grassland | 67,923 |
-| southwest-manitoba-uplands-mb | Southwest Manitoba Uplands | 2,180 |
+|Id|Name|Area km2|
+|---|---|---|
+|aspen-parkland-mb|Aspen Parkland|35,098|
+|aspen-parkland-sk|Aspen Parkland|81,009|
+|boreal-transition-mb|Boreal Transition|3,217|
+|boreal-transition-sk|Boreal Transition|53,976|
+|cypress-upland-sk|Cypress Upland|5,027|
+|interlake-plain-mb|Interlake Plain|39,922|
+|lake-manitoba-plain-mb|Lake Manitoba Plain|32,679|
+|mid-boreal-lowland-mb|Mid-Boreal Lowland|70,951|
+|mid-boreal-lowland-sk|Mid-Boreal Lowland|21,066|
+|mid-boreal-uplands-mb|Mid-Boreal Uplands|12,029|
+|mid-boreal-uplands-sk|Mid-Boreal Uplands|101,996|
+|mixed-grassland-sk|Mixed Grassland|86,494|
+|moist-mixed-grassland-sk|Moist Mixed Grassland|67,923|
+|southwest-manitoba-uplands-mb|Southwest Manitoba Uplands|2,180|
 
 ### Sources and processing
 
