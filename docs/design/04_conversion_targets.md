@@ -16,6 +16,7 @@ A "target" is the class a natural cell became by the latest snapshot. Targets:
 - `crop` (current behaviour)
 - `urban` (urban and developed)
 - `barren` (exposed land and barren)
+- `pasture` (pasture and forage, ACI 122), added 2026-11-26, see below
 
 Natural classes stay as today: forest, grassland, wetland, shrubland.
 
@@ -49,6 +50,27 @@ target if its latest code maps to that target.
 - Class table gets a target selector (tabs or columns). Percent is always of
   baseline natural hectares, and a cell cannot count in two targets.
 - CSV and the downloadable report gain a target column.
+
+## Pasture and forage as a fourth target
+
+Decision (2026-11-26): report conversion to pasture and forage as its own
+target, next to crop, instead of choosing one default. On the SK/MB test area,
+counting ACI 122 as crop roughly doubles the 2011 to 2025 total (97.6k to
+206.9k ha) and 2016 to 2025 (21k to 42k ha), so the choice matters more than
+any filter setting.
+
+- `crop` stays the headline and excludes ACI 122, as today. `pasture` is a
+  separate row and tab, never added into the crop figure, and a cell counts in
+  one target only.
+- Same noise filter and persistence rules as crop, with 122 as the persistent
+  class. Confidence is lower: native and tame grass are hard to separate, so
+  some "converted to pasture" is reseeding of existing grassland. The UI badge
+  says so, as for urban and barren.
+- Size: four targets times four classes roughly doubles `cells.json` (3.3 MB
+  for the test area today). Mitigate by writing zero arrays as `0` runs or
+  omitting all-zero target/class pairs, and rely on Pages gzip. Re-check the
+  5 MB guideline in the data contract before building.
+- Existing `--pasture-is-crop` stays as a sensitivity option only.
 
 ## Risks
 
