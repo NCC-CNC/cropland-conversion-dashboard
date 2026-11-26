@@ -12,6 +12,16 @@ Per area, under `web/public/data/<area_id>/`:
 
 Plus `web/public/data/areas.json`: `[{"id": "...", "name": "...", "bbox": [w,s,e,n]}]`.
 
+## Tiled areas (contract version 3)
+
+An area can instead be written as fixed 100 km tiles (`tiles/<col>_<row>.json`)
+and an `index.json`, with no `cells.json`; `meta.json` then has
+`contract_version` 3, `tiled: true` and `tile_km`. Each tile has the
+`cells.json` shape below plus a `region` integer per cell. A reader treats an
+area without `tiled` (and without `index.json`) as before, so version 1 and 2
+areas keep working. Format and sizes: `05_regional_partitioning.md` and
+`docs/decisions/0004-tiled-cell-data.md`.
+
 ## meta.json
 
 ```json

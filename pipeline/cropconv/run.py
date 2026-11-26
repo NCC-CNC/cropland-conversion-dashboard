@@ -19,6 +19,7 @@ from . import aggregate as agg
 from . import classes as cl
 from . import convert as cv
 from . import fetch as fx
+from . import tiling
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO / "web" / "public" / "data"
@@ -230,7 +231,7 @@ def build_caveats(targets):
     return caveats + [TARGET_CAVEATS[t] for t in targets if t in TARGET_CAVEATS]
 
 
-def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None):
+def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, tile_km=None):
     cfg = AREAS[area_id]
     targets = [t for t in cl.TARGETS if t in (targets or cl.TARGETS)]
     if params.pasture_is_crop:
@@ -327,15 +328,21 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None):
         "caveats": build_caveats(targets) + cfg.get("extra_caveats", []),
     }
 
+    if tile_km:
+        meta.update(contract_version=3, tiled=True, tile_km=tile_km)
     d = out_dir / area_id
     d.mkdir(parents=True, exist_ok=True)
     (d / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
-    (d / "cells.json").write_text(json.dumps(out, separators=(",", ":")) + "\n", encoding="utf-8")
+    if tile_km:
+        tiling.write_area(d, out, gx.ravel()[keep], gy.ravel()[keep], area_id, tile_km)
+    else:
+        (d / "cells.json").write_text(json.dumps(out, separators=(",", ":")) + "\n", encoding="utf-8")
     areas_path = out_dir / "areas.json"
     areas = json.loads(areas_path.read_text()) if areas_path.exists() else []
     areas = [a for a in areas if a["id"] != area_id] + [{"id": area_id, "name": cfg["name"], "bbox": bbox}]
     areas_path.write_text(json.dumps(sorted(areas, key=lambda a: a["id"]), indent=2) + "\n", encoding="utf-8")
-    log(f"wrote {d} (cells.json {(d / 'cells.json').stat().st_size / 1e6:.2f} MB)")
+    if not tile_km:
+        log(f"wrote {d} (cells.json {(d / 'cells.json').stat().st_size / 1e6:.2f} MB)")
 
     summarise(out, intervals_meta, area_ha[keep].sum(), legend_log, targets)
     if sensitivity:
@@ -414,6 +421,8 @@ def main(argv=None):
                     help="comma separated conversion targets to write (default: %(default)s)")
     ap.add_argument("--pasture-is-crop", action="store_true")
     ap.add_argument("--sensitivity", action="store_true")
+    ap.add_argument("--tiled", nargs="?", const=tiling.TILE_KM, type=int, default=None, metavar="KM",
+                    help="write tiles and index.json instead of cells.json (tile size in km, default %(const)s)")
     a = ap.parse_args(argv)
     params = cv.FilterParams(
         persistence=not a.no_persistence, min_patch_ha=a.min_patch_ha,
@@ -425,7 +434,7 @@ def main(argv=None):
     bad = [t for t in targets if t not in cl.TARGETS]
     if bad:
         ap.error(f"unknown targets {bad}; choose from {cl.TARGETS}")
-    run(a.area, a.out, params, a.latest, a.sensitivity, targets)
+    run(a.area, a.out, params, a.latest, a.sensitivity, targets, a.tiled)
 
 
 if __name__ == "__main__":

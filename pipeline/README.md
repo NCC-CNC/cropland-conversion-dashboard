@@ -21,7 +21,9 @@ full run takes about 30 seconds. Never commit rasters.
 
 Useful flags: `--latest YEAR`, `--min-patch-ha X`, `--no-persistence`,
 `--majority`, `--keep-prior-crop`, `--keep-prior-pasture-urban`, `--pasture-is-crop`,
-`--targets crop,pasture,urban,barren`, `--out DIR`.
+`--targets crop,pasture,urban,barren`, `--out DIR`, `--tiled [KM]` (write
+100 km tiles and `index.json` instead of `cells.json`, with each cell tagged
+by region; see `docs/design/05_regional_partitioning.md`).
 
 ## What it does
 
@@ -222,7 +224,7 @@ spike's validation step, issue 6).
 ```text
 pipeline/
   classes.csv        class mapping (version controlled)
-  cropconv/          fetch, classes, convert, aggregate, run, regions
+  cropconv/          fetch, classes, convert, aggregate, run, regions, tiling
   tests/             pytest: mapping, conversion logic, output schema
   requirements.txt
   cache/             downloaded rasters (gitignored)
