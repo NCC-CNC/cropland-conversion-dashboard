@@ -77,15 +77,15 @@ def log(*a):
     print(*a, file=sys.stderr, flush=True)
 
 
-def load_stack(raster_bbox, years, rows):
+def load_stack(raster_bbox, years, rows, check_legend=True):
     """Fetch and read all years; returns {year: group array} and {year: natural idx array}."""
     group_lut, natural_lut = cl.build_luts(rows)
     known = {r["code"] for r in rows}
     groups, naturals, legend_log = {}, {}, {}
     shape = None
     for y in years:
-        problems = cl.check_legend_labels(fx.service_legend_labels(y), rows)
-        legend_log[y] = problems or "ok"
+        problems = cl.check_legend_labels(fx.service_legend_labels(y), rows) if check_legend else []
+        legend_log[y] = problems or ("ok" if check_legend else "skipped")
         if problems:
             log(f"WARNING legend check {y}: {problems}")
         path = fx.fetch_year(y, raster_bbox)

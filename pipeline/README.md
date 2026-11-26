@@ -238,3 +238,32 @@ into `pipeline/exports/` (gitignored). One polygon per connected patch of an
 original ACI class code, EPSG:3978, attributes YEAR, CODE, LABEL, GRP. Upload
 the zips to a GitHub Release; never commit them. The 2009 and 2010 snapshots
 are 56 m in the source.
+
+## 30 m converted-pixel tiles (PMTiles)
+
+```bash
+python -m cropconv.export_tiles --area sk-mb-estevan-melville
+```
+
+Writes `pipeline/exports/<area_id>.pmtiles` (gitignored; never commit it),
+the layer behind the 30 m pixel view in ADR 0003. It reuses the fetch cache,
+class groups, `convert.conversion_masks` and the default filters of
+`cropconv.run`, so converted hectares match the 1 km totals' definition
+(the log prints them per interval and target). Pure Python (shapely,
+mapbox-vector-tile, pmtiles); no tippecanoe or sudo needed. About 4
+minutes and 1.3 GB peak memory for the test area with all four targets.
+
+- Format: PMTiles v3, gzip MVT in EPSG:3857, zoom 11 to 14 (`--min-zoom`,
+  `--max-zoom`; MapLibre overzooms past 14), one layer named `converted`.
+- Features: 4-connected patches of converted pixels per (interval, target,
+  natural class), properties `interval` (baseline year, number), `target`
+  (crop, pasture, urban, barren) and `class` (forest, grassland, wetland,
+  shrubland). The interval runs from `interval` to the latest year (archive
+  metadata `latest`).
+- Simplification: exact 30 m outlines at zoom 14; below that,
+  topology-preserving simplification at half a screen pixel, and patches
+  under half a screen pixel of area are dropped.
+- Flags: `--latest`, `--targets`, plus the filter flags of `cropconv.run`.
+  The service legend check is skipped (rasters come from the cache);
+  `--check-legend` turns it on. Only the `sk-mb-estevan-melville` area is
+  supported so far.

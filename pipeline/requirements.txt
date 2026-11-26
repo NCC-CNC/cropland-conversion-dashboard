@@ -5,3 +5,6 @@ pyproj>=3.6
 requests>=2.31
 pytest>=8.0
 pyshp>=2.3
+shapely>=2.0
+mapbox-vector-tile>=2.1
+pmtiles>=3.5
