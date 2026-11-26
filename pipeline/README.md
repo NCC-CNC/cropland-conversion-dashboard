@@ -203,3 +203,12 @@ pipeline/
 
 To add an area, add an entry to `AREAS` in `cropconv/run.py` (id, name,
 centre) and rerun. `areas.json` is merged by id.
+
+## Raw per-year shapefiles (test area)
+
+`python -m cropconv.export_shapes [--years 2024]` writes one zipped shapefile
+per ACI year for the Estevan SK, Melita MB, Russell MB, Melville SK test area
+into `pipeline/exports/` (gitignored). One polygon per connected patch of an
+original ACI class code, EPSG:3978, attributes YEAR, CODE, LABEL, GRP. Upload
+the zips to a GitHub Release; never commit them. The 2009 and 2010 snapshots
+are 56 m in the source.
