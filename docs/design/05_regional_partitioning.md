@@ -309,4 +309,3 @@ Cells outside the selected regions are dropped so every region in the index is c
 Usage, resume behaviour and measured cost are in `pipeline/README.md`. The sensitivity
 block is off by default there (`--sensitivity` adds it at about 7 s per tile); `cropconv.run`
 has `--no-sensitivity` for the same reason.
-
