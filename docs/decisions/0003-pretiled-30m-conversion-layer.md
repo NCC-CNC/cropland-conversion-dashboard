@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-11-26), after the hosting check below.
 
 ## Context
 
@@ -29,3 +29,23 @@ with the owner on 2026-11-26.
 - Hosting must support HTTP range requests (GitHub Pages does). Size may
   force tiles onto a release asset or object store later.
 - If large areas must show pixels, a backend would need a new ADR.
+
+## Hosting check (2026-11-26)
+
+Converted 30 m pixels on the SK/MB test area (28,800 km2) at the default noise
+filter, from the pipeline's own masks, vectorised as 4-connected patches:
+
+| Interval | Converted ha | Patches | Vertices | Raw GeoJSON (est.) |
+|---|---|---|---|---|
+| 2011 to 2025 | 96,800 | 43,000 | 706,000 | about 13 MB |
+| 2016 to 2025 | 21,200 | 26,500 | 272,000 | about 5 MB |
+| 2021 to 2025 | 12,800 | 15,200 | 164,000 | about 3 MB |
+
+About 21 MB raw for the three intervals. PMTiles compression and zoom
+simplification should bring that well under that figure, but this was not
+built, so treat it as an upper bound for the test area. Scaling by area to all
+of Manitoba and Saskatchewan agricultural land suggests tens to a few hundred
+MB, which fits under the Pages limit of about 1 GB but would bloat the repo.
+Plan: keep test-area tiles in the repo; for province scale host the PMTiles as
+a release asset or object store (range requests are required). Re-measure
+with a real PMTiles build before committing to province scale.
