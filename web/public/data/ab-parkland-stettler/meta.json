@@ -38,16 +38,215 @@
       "years": 4
     }
   ],
-  "method": "AAFC Annual Crop Inventory classes are grouped into natural (forest 200 to 230, grassland 110, wetland 80, shrubland 50), crop (agriculture and annual or specialty crops, codes 120 to 199 except 122) and other (water, urban, barren, cloud, burnt area, pasture and forage). A pixel counts as converted when it is natural in the baseline year and crop in 2025; to reduce classification noise a cell must also be crop in the most recent earlier snapshot between the baseline and the latest year (2024); isolated patches smaller than 0.5 ha (connected pixels, 30 m) are removed; no majority filter is applied; and natural cover in a baseline year excludes cells already mapped as crop in an earlier snapshot (likely fallow, forage rotation or mapping error; the 2011 baseline has no earlier snapshot). Pasture and forage (ACI 122) is not counted as crop, so conversion to tame pasture or hay is not detected. Converted pixels are summed by baseline natural class on a 1 km grid. Percent converted is converted divided by natural cover in the baseline year.",
+  "targets": [
+    "crop",
+    "pasture",
+    "urban",
+    "barren"
+  ],
+  "contract_version": 2,
+  "method": "AAFC Annual Crop Inventory classes are grouped into natural (forest 200 to 230, grassland 110, wetland 80, shrubland 50), the conversion targets crop (agriculture and annual or specialty crops, codes 120 to 199 except 122), pasture and forage (122), urban and developed (34), exposed land and barren (30), and other (water, cloud, burnt area, greenhouse, peatland). A pixel counts as converted to a target when it is natural in the baseline year and in that target class in 2025; each target is reported separately and a pixel counts in one target only. To reduce classification noise, for every target a cell must also be crop in the most recent earlier snapshot between the baseline and the latest year (2024); isolated patches smaller than 0.5 ha (connected pixels, 30 m) are removed; no majority filter is applied; and natural cover in a baseline year excludes cells already mapped as crop in an earlier snapshot (likely fallow, forage rotation or mapping error; the 2011 baseline has no earlier snapshot); natural cover also excludes cells already mapped as pasture or forage or urban in an earlier snapshot (likely tame grass, hay or developed land rather than natural cover), so figures are lower than in earlier versions of this dashboard, which did not apply this rule. Earlier barren does not remove a cell from the baseline. Pasture and forage (ACI 122) is reported as its own target and is never added to crop. Converted pixels are summed by baseline natural class on a 1 km grid. Percent converted is converted divided by natural cover in the baseline year.",
   "source": "AAFC Annual Crop Inventory, OGL-Canada-2.0, https://agriculture.canada.ca/atlas/annual-crop-inventory (ImageServer: https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory)",
-  "generated": "2026-11-20",
+  "generated": "2026-11-26",
   "caveats": [
-    "Crop is mapped with reported accuracy of 85 to 90 percent or more by AAFC, but natural classes such as grassland, wetland and shrubland are mapped less accurately. Small differences are within map error.",
+    "The split of natural cover by class (forest, shrubland, grassland, wetland) is unreliable across years. It can swing by tens of thousands of hectares without any real change, so treat the by-class rows as indicative and the total as more reliable than the split. Crop itself is mapped with reported accuracy of 85 to 90 percent or more.",
+    "The 2025 map classifies non-crop land differently from earlier years: shrubland almost disappears and wetland increases. This can distort by-class results for recent intervals, while crop detection is much less affected.",
     "The Annual Crop Inventory classification method and ground data changed over the series, so some change between years is a mapping artefact rather than a land change. Early years (2011) are the least reliable.",
-    "Native grassland cannot be separated from tame grass and pasture. Conversion to pasture or hay is not counted as crop, and some grassland counted here may be tame.",
+    "Native grassland cannot be separated from tame grass and pasture, and some grassland counted here may be tame.",
+    "Each conversion target is detected separately from natural cover, and a cell counts in one target only. Natural cover lost to water or other uses is not shown, and land returning to natural cover is not subtracted.",
     "Conversion is detected from natural to crop only. Natural cover lost to urban, water or other uses is not shown, and cropland returning to grass is not subtracted.",
     "A noise filter (persistence and minimum patch size) removes isolated single year flips, but it also removes real small conversions, so hectares are conservative for small fields and linear clearings.",
     "Results are summed over 1 km grid cells whose centre lies inside the drawn area. The edge of a polygon is therefore approximate, and results for areas smaller than a few square kilometres are very uncertain.",
-    "This is a screening aid for planning and grant context, not a parcel level or legal grade result, and it does not say why land was converted."
-  ]
+    "This is a screening aid for planning and grant context, not a parcel level or legal grade result, and it does not say why land was converted.",
+    "Conversion to pasture and forage is less certain than conversion to crop. Native grassland and seeded pasture look alike in the Annual Crop Inventory, so some of this may be existing grass that was reseeded or relabelled. It is not added to the cropland figure.",
+    "Conversion to urban and developed land is mapped less accurately than crop. Roads, rail lines, well pads and small buildings can appear and disappear between years, so treat small values as uncertain.",
+    "Conversion to barren and exposed land is the least reliable target. Bare soil, gravel, dry wetlands and recently cleared land are easily confused, and the label can change from year to year without a real change on the ground."
+  ],
+  "target_caveats": {
+    "pasture": "Conversion to pasture and forage is less certain than conversion to crop. Native grassland and seeded pasture look alike in the Annual Crop Inventory, so some of this may be existing grass that was reseeded or relabelled. It is not added to the cropland figure.",
+    "urban": "Conversion to urban and developed land is mapped less accurately than crop. Roads, rail lines, well pads and small buildings can appear and disappear between years, so treat small values as uncertain.",
+    "barren": "Conversion to barren and exposed land is the least reliable target. Bare soil, gravel, dry wetlands and recently cleared land are easily confused, and the label can change from year to year without a real change on the ground."
+  },
+  "sensitivity": {
+    "target": "crop",
+    "note": "Converted hectares to crop over each whole interval under alternative noise filter settings, and as a percent of that setting's own baseline natural hectares. Whole window totals, not specific to a drawn area; small areas are noisier than these totals.",
+    "settings": [
+      {
+        "id": "no_filter",
+        "label": "1. No filter at all",
+        "is_default": false,
+        "intervals": {
+          "2011-2025": {
+            "converted_ha": 6929.0,
+            "natural_ha": 35311.2,
+            "percent": 19.62
+          },
+          "2016-2025": {
+            "converted_ha": 15186.6,
+            "natural_ha": 61301.5,
+            "percent": 24.77
+          },
+          "2021-2025": {
+            "converted_ha": 10919.0,
+            "natural_ha": 53762.1,
+            "percent": 20.31
+          }
+        }
+      },
+      {
+        "id": "persistence",
+        "label": "2. Persistence only",
+        "is_default": false,
+        "intervals": {
+          "2011-2025": {
+            "converted_ha": 3928.3,
+            "natural_ha": 35311.2,
+            "percent": 11.12
+          },
+          "2016-2025": {
+            "converted_ha": 8125.1,
+            "natural_ha": 61301.5,
+            "percent": 13.25
+          },
+          "2021-2025": {
+            "converted_ha": 4797.0,
+            "natural_ha": 53762.1,
+            "percent": 8.92
+          }
+        }
+      },
+      {
+        "id": "patch_0_5",
+        "label": "3. Persistence + 0.5 ha patches",
+        "is_default": false,
+        "intervals": {
+          "2011-2025": {
+            "converted_ha": 3464.4,
+            "natural_ha": 35311.2,
+            "percent": 9.81
+          },
+          "2016-2025": {
+            "converted_ha": 5506.6,
+            "natural_ha": 61301.5,
+            "percent": 8.98
+          },
+          "2021-2025": {
+            "converted_ha": 2878.2,
+            "natural_ha": 53762.1,
+            "percent": 5.35
+          }
+        }
+      },
+      {
+        "id": "prior_crop",
+        "label": "4. 3 + exclude prior crop (default until 2026-11-26)",
+        "is_default": false,
+        "intervals": {
+          "2011-2025": {
+            "converted_ha": 3464.4,
+            "natural_ha": 35311.2,
+            "percent": 9.81
+          },
+          "2016-2025": {
+            "converted_ha": 3888.7,
+            "natural_ha": 48815.1,
+            "percent": 7.97
+          },
+          "2021-2025": {
+            "converted_ha": 1599.8,
+            "natural_ha": 41028.0,
+            "percent": 3.9
+          }
+        }
+      },
+      {
+        "id": "default",
+        "label": "5. Default: 4 + exclude prior pasture and urban",
+        "is_default": true,
+        "intervals": {
+          "2011-2025": {
+            "converted_ha": 3464.4,
+            "natural_ha": 35311.2,
+            "percent": 9.81
+          },
+          "2016-2025": {
+            "converted_ha": 1258.1,
+            "natural_ha": 30276.3,
+            "percent": 4.16
+          },
+          "2021-2025": {
+            "converted_ha": 559.9,
+            "natural_ha": 26117.3,
+            "percent": 2.14
+          }
+        }
+      },
+      {
+        "id": "patch_2",
+        "label": "6. As default, 2 ha patches",
+        "is_default": false,
+        "intervals": {
+          "2011-2025": {
+            "converted_ha": 2849.2,
+            "natural_ha": 35311.2,
+            "percent": 8.07
+          },
+          "2016-2025": {
+            "converted_ha": 978.3,
+            "natural_ha": 30276.3,
+            "percent": 3.23
+          },
+          "2021-2025": {
+            "converted_ha": 449.9,
+            "natural_ha": 26117.3,
+            "percent": 1.72
+          }
+        }
+      },
+      {
+        "id": "majority",
+        "label": "7. As default, plus 3x3 majority filter",
+        "is_default": false,
+        "intervals": {
+          "2011-2025": {
+            "converted_ha": 2686.9,
+            "natural_ha": 35311.2,
+            "percent": 7.61
+          },
+          "2016-2025": {
+            "converted_ha": 930.2,
+            "natural_ha": 30276.3,
+            "percent": 3.07
+          },
+          "2021-2025": {
+            "converted_ha": 426.5,
+            "natural_ha": 26117.3,
+            "percent": 1.63
+          }
+        }
+      },
+      {
+        "id": "pasture_as_crop",
+        "label": "8. As default, pasture/forage counted as crop",
+        "is_default": false,
+        "intervals": {
+          "2011-2025": {
+            "converted_ha": 7769.9,
+            "natural_ha": 35311.2,
+            "percent": 22.0
+          },
+          "2016-2025": {
+            "converted_ha": 3814.6,
+            "natural_ha": 30276.3,
+            "percent": 12.6
+          },
+          "2021-2025": {
+            "converted_ha": 1870.9,
+            "natural_ha": 26117.3,
+            "percent": 7.16
+          }
+        }
+      }
+    ]
+  }
 }
