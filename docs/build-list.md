@@ -24,7 +24,7 @@ decision are listed at the bottom until settled, then move up. Updated
 |15|Ecoregion boundaries (14 farming-zone pieces) in the pipeline|#28|none|merged (#49)|
 |16|Fixed 100 km tiling plus a region index (ADR 0004)|#28|15|merged (#52)|
 |17|Province summary file (MB, SK, all) with coverage flag|#28|15|merged (#54)|
-|18|Web: region picker, province card (summary first, detail on request), tile loading|#28|3, 16, 17|queued|
+|18|Web: region picker, province card (summary first, detail on request), tile loading|#28|3, 16, 17|in PR|
 |19|By-class split caveat and 2025 non-crop note|#2|none|merged (#55)|
 |20|Keyed `meta.target_caveats` instead of pairing by position|#27|1, 3|queued|
 |21|Run each farming-zone region in tiled mode (fetch rasters for all 14 regions)|#28|16|queued|
