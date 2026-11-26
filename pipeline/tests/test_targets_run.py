@@ -110,3 +110,21 @@ def test_method_text_states_prior_pasture_urban_rule_only_when_on():
     assert "pasture or forage or urban" in crop_on
     assert "pasture or forage or urban" not in rn.describe_method(
         2025, cv.FilterParams(exclude_prior_pasture_urban=False), persist)
+
+
+def test_sensitivity_rows_ordering_and_json():
+    groups, naturals = synthetic_stack()
+    avail = [2011, 2016, 2021, 2024, 2025]
+    rows = rn.sensitivity_rows(groups, naturals, 2025, avail, PX_M2, cv.FilterParams(min_patch_ha=0.0))
+    assert [r["id"] for r in rows] == [p[0] for p in rn.PRESETS]
+    assert sum(r["is_default"] for r in rows) == 1
+    by = {r["id"]: r["intervals"]["2011-2025"] for r in rows}
+    assert set(rows[0]["intervals"]) == {"2011-2025", "2016-2025", "2021-2025"}
+    # looser filters never convert less than the default, and the default is positive here
+    assert by["no_filter"]["converted_ha"] >= by["persistence"]["converted_ha"] >= by["default"]["converted_ha"]
+    assert by["default"]["converted_ha"] > 0
+    assert by["pasture_as_crop"]["converted_ha"] >= by["default"]["converted_ha"]
+    assert 0 < by["default"]["percent"] <= 100
+    meta = rn.sensitivity_meta(rows)
+    assert json.loads(json.dumps(meta)) == meta
+    assert "\u2014" not in json.dumps(meta, ensure_ascii=False)

@@ -209,6 +209,10 @@ from `python -m cropconv.run --sensitivity`:
 |7. As default, plus 3x3 majority filter|2,687 (7.6%)|930 (3.1%)|426 (1.6%)|
 |8. As default, pasture/forage counted as crop|7,770 (22.0%)|3,815 (12.6%)|1,871 (7.2%)|
 
+Every run also writes this table for crop to `meta.json` under `sensitivity`
+(whole window totals, additive field, see the data contract), so the range is
+published with the data. `--sensitivity` only prints it.
+
 Without any filter, the raw "natural to crop" transition is 20 to 25 percent of
 natural cover, which is mostly noise. Persistence removes about half of it,
 the patch size and prior use filters remove a further 20 to 75 percent (the

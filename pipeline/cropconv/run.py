@@ -342,6 +342,9 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, 
         "caveats": build_caveats(targets) + cfg.get("extra_caveats", []),
     }
 
+    sens_rows = sensitivity_rows(groups, naturals, latest, years, pm2, params)
+    meta["sensitivity"] = sensitivity_meta(sens_rows)
+
     if tile_km:
         meta.update(contract_version=3, tiled=True, tile_km=tile_km)
     d = out_dir / area_id
@@ -361,7 +364,7 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, 
 
     summarise(out, intervals_meta, area_ha[keep].sum(), legend_log, targets)
     if sensitivity:
-        sensitivity_table(groups, naturals, latest, years, pm2, params, cells, pixel_ha, n_cells, keep)
+        print_sensitivity(sens_rows)
     return meta, out
 
 
@@ -386,37 +389,65 @@ def summarise(out, intervals_meta, area_total, legend_log, targets=("crop",)):
 
 
 PRESETS = [
-    ("1. No filter at all", dict(persistence=False, min_patch_ha=0.0, majority=False, exclude_prior_crop=False, exclude_prior_pasture_urban=False)),
-    ("2. Persistence only", dict(persistence=True, min_patch_ha=0.0, majority=False, exclude_prior_crop=False, exclude_prior_pasture_urban=False)),
-    ("3. Persistence + 0.5 ha patches", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=False, exclude_prior_pasture_urban=False)),
-    ("4. 3 + exclude prior crop (default until 2026-11-26)", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=True, exclude_prior_pasture_urban=False)),
-    ("5. Default: 4 + exclude prior pasture and urban", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=True, exclude_prior_pasture_urban=True)),
-    ("6. As default, 2 ha patches", dict(min_patch_ha=2.0)),
-    ("7. As default, plus 3x3 majority filter", dict(majority=True)),
-    ("8. As default, pasture/forage counted as crop", dict(pasture_is_crop=True)),
+    ("no_filter", "1. No filter at all", dict(persistence=False, min_patch_ha=0.0, majority=False, exclude_prior_crop=False, exclude_prior_pasture_urban=False)),
+    ("persistence", "2. Persistence only", dict(persistence=True, min_patch_ha=0.0, majority=False, exclude_prior_crop=False, exclude_prior_pasture_urban=False)),
+    ("patch_0_5", "3. Persistence + 0.5 ha patches", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=False, exclude_prior_pasture_urban=False)),
+    ("prior_crop", "4. 3 + exclude prior crop (default until 2026-11-26)", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=True, exclude_prior_pasture_urban=False)),
+    ("default", "5. Default: 4 + exclude prior pasture and urban", dict(persistence=True, min_patch_ha=0.5, majority=False, exclude_prior_crop=True, exclude_prior_pasture_urban=True)),
+    ("patch_2", "6. As default, 2 ha patches", dict(min_patch_ha=2.0)),
+    ("majority", "7. As default, plus 3x3 majority filter", dict(majority=True)),
+    ("pasture_as_crop", "8. As default, pasture/forage counted as crop", dict(pasture_is_crop=True)),
 ]
+DEFAULT_PRESET = "default"
 
 
-def sensitivity_table(groups, naturals, latest, years, pm2, base_params, cells, pixel_ha, n_cells, keep):
-    print("\nSensitivity: converted ha over the whole window (percent of that setting's baseline natural ha)")
-    bases = [b for b in BASELINES if b < latest]
-    head = " | ".join(f"{b} to {latest}" for b in bases)
-    print(f"| Setting | {head} |")
-    print("|---|" + "---|" * len(bases))
-    nat_line = []
-    for name, kw in PRESETS:
+def sensitivity_rows(groups, naturals, latest, years, pm2, base_params):
+    """Crop conversion under each preset filter setting, for every baseline before latest.
+
+    Each preset is applied on top of base_params. Returns a list of dicts with id, label,
+    is_default and intervals {"from-to": {converted_ha, natural_ha, percent}}.
+    """
+    rows = []
+    for pid, label, kw in PRESETS:
         p = replace(base_params, **kw)
         res = interval_masks(groups, naturals, latest, p, pm2, years, ["crop"])
-        vals = []
-        for b in bases:
-            nat, conv, _ = res[b]
+        ivs = {}
+        for b, (nat, conv, _) in res.items():
             ha = float(conv["crop"].sum() * pm2 / 1e4)
             nha = float((nat > 0).sum() * pm2 / 1e4)
-            vals.append(f"{ha:,.0f} ({100 * ha / nha:.1f}%)")
-            if name.startswith("5."):
-                nat_line.append(f"{b}: {nha:,.0f}")
-        print(f"| {name} | " + " | ".join(vals) + " |")
-    print("Baseline natural ha under the default: " + ", ".join(nat_line))
+            ivs[f"{b}-{latest}"] = {
+                "converted_ha": round(ha, 1),
+                "natural_ha": round(nha, 1),
+                "percent": round(100 * ha / nha, 2) if nha else 0.0,
+            }
+        rows.append({"id": pid, "label": label, "is_default": pid == DEFAULT_PRESET, "intervals": ivs})
+    return rows
+
+
+def sensitivity_meta(rows):
+    """The meta.json `sensitivity` block (contract: 02_mvp_data_contract.md)."""
+    return {
+        "target": "crop",
+        "note": (
+            "Converted hectares to crop over each whole interval under alternative noise filter settings, "
+            "and as a percent of that setting's own baseline natural hectares. Whole window totals, not "
+            "specific to a drawn area; small areas are noisier than these totals."
+        ),
+        "settings": rows,
+    }
+
+
+def print_sensitivity(rows):
+    print("\nSensitivity: converted ha over the whole window (percent of that setting's baseline natural ha)")
+    keys = list(rows[0]["intervals"])
+    print("| Setting | " + " | ".join(k.replace("-", " to ") for k in keys) + " |")
+    print("|---|" + "---|" * len(keys))
+    for r in rows:
+        vals = [f"{r['intervals'][k]['converted_ha']:,.0f} ({r['intervals'][k]['percent']:.1f}%)" for k in keys]
+        print(f"| {r['label']} | " + " | ".join(vals) + " |")
+    d = next(r for r in rows if r["is_default"])
+    print("Baseline natural ha under the default: "
+          + ", ".join(f"{k.split('-')[0]}: {d['intervals'][k]['natural_ha']:,.0f}" for k in keys))
 
 
 def main(argv=None):

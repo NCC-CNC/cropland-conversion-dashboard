@@ -13,7 +13,7 @@ decision are listed at the bottom until settled, then move up. Updated
 |2|Region sizing for MB and SK|#28|none|done, ecoregions chosen|
 |3|PR B: web app target support|#27|1|merged (#47), not yet checked in a browser|
 |4|Differencing warning in the global caveats|#31|none|merged (#44)|
-|5|Record noise filter sensitivity range in the report|#3|1|queued|
+|5|Record noise filter sensitivity range in the report|#3|1|in PR|
 |6|Show the test-area 2011 caveat prominently in the UI|#30|3|queued|
 |8|PMTiles 30 m converted layer in the pipeline|#29|1|merged (#48)|
 |9|Map layer for 30 m pixels under a selection size threshold (PMTiles committed to the repo for the test area)|#29|8|queued|

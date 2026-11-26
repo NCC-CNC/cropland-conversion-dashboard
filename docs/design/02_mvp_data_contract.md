@@ -53,11 +53,32 @@ farming zone covered, and `method`, `caveats` and dates copied from
   "method": "plain-language description of class mapping and noise filter",
   "source": "AAFC Annual Crop Inventory, OGL-Canada-2.0, URL",
   "generated": "ISO date",
-  "caveats": ["list of strings shown in the UI"]
+  "caveats": ["list of strings shown in the UI"],
+  "sensitivity": {
+    "target": "crop",
+    "note": "plain-language caveat",
+    "settings": [
+      {"id": "no_filter", "label": "1. No filter at all", "is_default": false,
+       "intervals": {"2011-2024": {"converted_ha": 6929.0, "natural_ha": 35300.0, "percent": 19.63}}},
+      {"id": "default", "label": "5. Default: ...", "is_default": true, "intervals": {"...": "..."}}
+    ]
+  }
 }
 ```
 
 `intervals` always compare an earlier snapshot with the latest one.
+
+`sensitivity` is optional and additive (issue 3, 2026-11-26); readers must
+ignore it if absent. It records whole-window crop conversion under eight
+preset noise filter settings (ids `no_filter`, `persistence`, `patch_0_5`,
+`prior_crop`, `default`, `patch_2`, `majority`, `pasture_as_crop`), each as
+hectares converted, the setting's own baseline natural hectares and the
+percent, per interval key (`from-to`, same keys as `intervals`). Exactly one
+setting has `is_default: true`: the documented default preset, which equals
+the filters actually applied unless the run overrode them (see `method`). Only
+crop is covered. Values are totals for the whole area window, not for a drawn
+polygon, so they show the range of the filter choice, not area specific
+uncertainty.
 
 `targets` lists the classes that natural cover can be converted to, a subset
 of `crop`, `pasture`, `urban`, `barren` that always includes `crop`.
