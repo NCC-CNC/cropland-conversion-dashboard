@@ -155,6 +155,7 @@ def describe_method(latest, params, persist_years):
 CAVEATS = [
     "Crop is mapped with reported accuracy of 85 to 90 percent or more by AAFC, but natural classes such as grassland, wetland and shrubland are mapped less accurately. Small differences are within map error.",
     "The Annual Crop Inventory classification method and ground data changed over the series, so some change between years is a mapping artefact rather than a land change. Early years (2011) are the least reliable.",
+    "These results compare two maps, and the difference between two maps always mixes real land change with mapping error. Figures are estimates until they are checked against independent data.",
     "Native grassland cannot be separated from tame grass and pasture. Conversion to pasture or hay is not counted as crop, and some grassland counted here may be tame.",
     "Conversion is detected from natural to crop only. Natural cover lost to urban, water or other uses is not shown, and cropland returning to grass is not subtracted.",
     "A noise filter (persistence and minimum patch size) removes isolated single year flips, but it also removes real small conversions, so hectares are conservative for small fields and linear clearings.",
