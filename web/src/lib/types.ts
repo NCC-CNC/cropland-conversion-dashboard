@@ -27,13 +27,30 @@ export interface Meta {
   source: string;
   generated: string;
   caveats: string[];
+  /** Conversion targets present in the data. Missing means crop only (contract version 1). */
+  targets?: string[];
+  contract_version?: number;
 }
 
 export type ClassArrays = Record<string, number[]>;
 
+/** `converted_ha` as stored in cells.json: flat (crop only, version 1) or keyed by target (version 2). */
+export interface RawIntervalCells {
+  natural_ha: ClassArrays;
+  converted_ha: ClassArrays | Record<string, ClassArrays>;
+}
+
+export interface RawCells {
+  lon: number[];
+  lat: number[];
+  area_ha: number[];
+  intervals: Record<string, RawIntervalCells>;
+}
+
+/** Normalised: `converted_ha` is always keyed by target. A missing target or class means zero. */
 export interface IntervalCells {
   natural_ha: ClassArrays;
-  converted_ha: ClassArrays;
+  converted_ha: Record<string, ClassArrays>;
 }
 
 export interface Cells {
@@ -66,9 +83,13 @@ export interface IntervalSummary {
   years: number;
   rows: ClassRow[];
   total: ClassRow;
+  /** Compact total per target (every target in meta, not only the active one), for headline rows. */
+  targetTotals: Record<string, ClassRow>;
 }
 
 export interface Summary {
+  /** Target that `rows` and `total` describe. */
+  target: string;
   cellCount: number;
   intervals: IntervalSummary[];
 }

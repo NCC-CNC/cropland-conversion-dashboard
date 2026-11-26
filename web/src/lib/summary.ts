@@ -3,11 +3,13 @@ import type {
   BBox,
   Cells,
   ClassRow,
+  IntervalCells,
   IntervalSummary,
   Meta,
   PolygonGeometry,
   Summary,
 } from './types';
+import { DEFAULT_TARGET, metaTargets } from './targets';
 
 /** Fewer cells than this in a selection means high uncertainty. */
 export const MIN_RELIABLE_CELLS = 5;
@@ -57,36 +59,70 @@ export function makeRow(cls: string, naturalHa: number, convertedHa: number, yea
   };
 }
 
-/** Sum the selected cells per interval and class, then derive percent and annual rate. */
-export function summarize(cells: Cells, meta: Meta, indices: number[]): Summary {
+/** Sum one target's hectares over the selected cells, per natural class. */
+function sumClasses(
+  data: IntervalCells | undefined,
+  classes: string[],
+  target: string,
+  indices: number[],
+): { nat: number[]; conv: number[] } {
+  const nat: number[] = [];
+  const conv: number[] = [];
+  for (const cls of classes) {
+    const na = data?.natural_ha[cls];
+    const ca = data?.converted_ha[target]?.[cls];
+    let n = 0;
+    let c = 0;
+    for (const i of indices) {
+      n += na?.[i] ?? 0;
+      c += ca?.[i] ?? 0;
+    }
+    nat.push(n);
+    conv.push(c);
+  }
+  return { nat, conv };
+}
+
+const total = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+
+/**
+ * Sum the selected cells per interval and class for the active target (default crop), then derive
+ * percent and annual rate. Each interval also carries a compact total for every target in the data.
+ */
+export function summarize(
+  cells: Cells,
+  meta: Meta,
+  indices: number[],
+  target: string = DEFAULT_TARGET,
+): Summary {
+  const classes = meta.natural_classes;
+  const targets = metaTargets(meta);
   const intervals: IntervalSummary[] = meta.intervals.map((iv) => {
     const key = `${iv.from}-${iv.to}`;
     const data = cells.intervals[key];
-    let totalNat = 0;
-    let totalConv = 0;
-    const rows = meta.natural_classes.map((cls) => {
-      const nat = data?.natural_ha[cls];
-      const conv = data?.converted_ha[cls];
-      let n = 0;
-      let c = 0;
-      for (const i of indices) {
-        n += nat?.[i] ?? 0;
-        c += conv?.[i] ?? 0;
-      }
-      totalNat += n;
-      totalConv += c;
-      return makeRow(cls, n, c, iv.years);
-    });
+    const active = sumClasses(data, classes, target, indices);
+    const rows = classes.map((cls, k) => makeRow(cls, active.nat[k], active.conv[k], iv.years));
+    const targetTotals: Record<string, ClassRow> = {};
+    for (const t of targets) {
+      const s = t === target ? active : sumClasses(data, classes, t, indices);
+      targetTotals[t] = makeRow('total', total(s.nat), total(s.conv), iv.years);
+    }
     return {
       key,
       from: iv.from,
       to: iv.to,
       years: iv.years,
       rows,
-      total: makeRow('total', totalNat, totalConv, iv.years),
+      total: makeRow('total', total(active.nat), total(active.conv), iv.years),
+      targetTotals,
     };
   });
-  return { cellCount: indices.length, intervals };
+  return { target, cellCount: indices.length, intervals };
+}
+
+/** One summary per target in the data, in target order. Used for the CSV and the report. */
+export function summarizeTargets(cells: Cells, meta: Meta, indices: number[]): Summary[] {
+  return metaTargets(meta).map((t) => summarize(cells, meta, indices, t));
 }
 
 export type SelectionStatus = 'ok' | 'few-cells' | 'outside-coverage' | 'no-natural-cells';
