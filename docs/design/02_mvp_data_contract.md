@@ -121,10 +121,18 @@ or any conversion. Cell centroids are WGS84.
 ## Rules
 
 - No em dashes in any text field.
-- Keep `cells.json` under about 5 MB for the MVP area. Omitting all-zero
-  arrays helps, but four targets on a large area can exceed it: the SK/MB test
-  area is 6.9 MB raw (0.68 MB gzipped, which is what GitHub Pages serves)
-  with all four targets.
+- Keep `cells.json` under about 10 MB raw (owner decision, 2026-11-26; was
+  about 5 MB). GitHub Pages serves it gzipped, so the transfer size is what
+  matters. Omitting all-zero arrays helps. For tiled data the guideline is
+  about 2 MB raw per tile, a guideline and not a hard limit. Measured, all
+  four targets:
+
+  |Data|Raw|Gzipped|
+  |---|---|---|
+  |SK/MB test area, single `cells.json`|5.98 MB|about 0.6 MB|
+  |Interlake window, single `cells.json`|2.15 MB|0.24 MB|
+  |Tiled 100 km tile, largest|about 1.8 MB|about 0.2 MB|
+
 - `snapshots` lists the baseline years and the latest year. The pipeline may
   also read the year before the latest as a persistence check; it is named in
   `method` but is not an interval baseline.

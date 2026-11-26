@@ -229,10 +229,10 @@ def export_area(area_id, out_dir: Path, params, latest=None, targets=None, min_z
     targets = [t for t in cl.TARGETS if t in (targets or cl.TARGETS)]
     if params.pasture_is_crop:
         targets = [t for t in targets if t != "pasture"]
-    if not cfg.get("bbox_corners"):
-        raise SystemExit("only bbox_corners areas are supported so far (use sk-mb-estevan-melville)")
-    from .export_shapes import test_area_bbox
-    grid, raster = rn.window_bbox(test_area_bbox())
+    bbox = rn.area_bbox(cfg)
+    if not bbox:
+        raise SystemExit("only rectangle areas are supported (sk-mb-estevan-melville, mb-interlake)")
+    grid, raster = rn.window_bbox(bbox)
     if latest is None:
         try:
             latest = max(fx.service_years())

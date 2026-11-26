@@ -48,7 +48,21 @@ AREAS = {
             "mapping difference between years. Prefer the 2016 and 2021 baselines.",
         ],
     },
+    "mb-interlake": {
+        "name": "MB test window (Interlake)",
+        # 99.9 km square (3330 pixels) near Gimli to Fisher Branch, EPSG:3978, a multiple of 30 m. Touches the
+        # Interlake Plain (about 69 percent), Lake Manitoba Plain (16) and Mid-Boreal Lowland (14) ecoregions.
+        "bbox_3978": (-211050, 152430, -111150, 252330),
+    },
 }
+
+
+def area_bbox(cfg):
+    """EPSG:3978 raster bbox for an area configured as a rectangle, or None for a centre point window."""
+    if cfg.get("bbox_corners"):
+        from .export_shapes import test_area_bbox
+        return test_area_bbox()
+    return cfg.get("bbox_3978")
 
 
 def window_bbox(bbox):
@@ -237,9 +251,8 @@ def run(area_id, out_dir, params, latest=None, sensitivity=False, targets=None, 
     if params.pasture_is_crop:
         targets = [t for t in targets if t != "pasture"]  # pasture is part of crop in this mode
     rows = cl.load_classes()
-    if cfg.get("bbox_corners"):
-        from .export_shapes import test_area_bbox
-        grid, raster = window_bbox(test_area_bbox())
+    if area_bbox(cfg):
+        grid, raster = window_bbox(area_bbox(cfg))
     else:
         grid, raster = window(cfg["center"])
     log(f"window grid {grid} raster {raster}")
