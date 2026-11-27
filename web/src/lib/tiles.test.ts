@@ -136,8 +136,16 @@ describe('province card', () => {
     expect(m.coverageText).toMatch(/not a Manitoba total/);
     expect(m.coverageText).toContain('1 of 14');
     expect(m.coverageText).toContain('Covered regions: a-mb (MB).');
-    expect(buildProvinceCard(summaryWith(false), 'all')!.coverageText).toContain('only partly included: b-sk (SK).');
+    expect(buildProvinceCard(summaryWith(false), 'all')!.coverageText).toContain('b-sk (SK).');
+    expect(buildProvinceCard(summaryWith(false), 'all')!.coverageText).toContain('Partly covered regions');
     expect(m.regionsRun).toEqual(['a-mb']);
+  });
+  it('does not print an empty covered-regions label', () => {
+    const s = summaryWith(false);
+    s.provinces.MB.coverage = { ...s.provinces.MB.coverage, regions_covered: [], regions_partial: ['a-mb'] };
+    const text = buildProvinceCard(s, 'MB')!.coverageText;
+    expect(text).not.toContain('Covered regions:');
+    expect(text).toContain('Partly covered regions');
   });
   it('says total only when complete is true', () => {
     const m = buildProvinceCard(summaryWith(true), 'MB')!;

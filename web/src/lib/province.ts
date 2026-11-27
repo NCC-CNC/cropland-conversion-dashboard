@@ -52,12 +52,13 @@ export function coverageSentence(
   if (cov.complete) {
     return `All ${cov.regions_total} farming-zone regions are covered, so these figures are the ${name} total for the farming zone.`;
   }
-  const list = (xs: string[]) => (xs.length > 0 ? ` ${xs.join(', ')}.` : '');
+  const list = (xs: string[]) => xs.join(', ');
+  const done = covered.length > 0 ? ` Covered regions: ${list(covered)}.` : '';
   const part =
     partial.length > 0
-      ? ` Regions where the Annual Crop Inventory maps too little of the area in the latest year or a baseline year, so they are only partly included:${list(partial)}`
+      ? ` Partly covered regions (the data holds only part of the region, or the Annual Crop Inventory maps little of it in the latest year or a baseline year): ${list(partial)}.`
       : '';
-  return `Partial coverage: ${cov.regions_covered.length} of ${cov.regions_total} farming-zone regions are covered, and about ${pct(cov.fraction)} of the farming-zone area has data. These figures describe only that data and are not a ${name} total. Covered regions:${list(covered)}${part}`;
+  return `Partial coverage: ${cov.regions_covered.length} of ${cov.regions_total} farming-zone regions are covered, and about ${pct(cov.fraction)} of the farming-zone area has data. These figures describe only that data and are not a ${name} total.${done}${part}`;
 }
 
 /**
