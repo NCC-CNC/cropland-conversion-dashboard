@@ -102,7 +102,8 @@ const cov = (complete: boolean) => ({
   complete,
   regions_total: 14,
   regions_run: ['a-mb', 'b-sk'],
-  regions_covered: complete ? ['a-mb', 'b-sk'] : [],
+  regions_covered: complete ? ['a-mb', 'b-sk'] : ['a-mb'],
+  regions_partial: complete ? [] : ['b-sk'],
   farming_zone_area_km2: 600000,
   covered_area_km2: 21000,
   fraction: 0.035,
@@ -133,7 +134,9 @@ describe('province card', () => {
     expect(m.provincial).toBe(false);
     expect(m.heading).not.toMatch(/total/i);
     expect(m.coverageText).toMatch(/not a Manitoba total/);
-    expect(m.coverageText).toContain('2 of 14');
+    expect(m.coverageText).toContain('1 of 14');
+    expect(m.coverageText).toContain('Covered regions: a-mb (MB).');
+    expect(buildProvinceCard(summaryWith(false), 'all')!.coverageText).toContain('only partly included: b-sk (SK).');
     expect(m.regionsRun).toEqual(['a-mb']);
   });
   it('says total only when complete is true', () => {

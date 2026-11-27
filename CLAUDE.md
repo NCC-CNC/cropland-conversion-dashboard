@@ -27,8 +27,9 @@ MVP live on GitHub Pages: web app in `web/`, real ACI data for the Stettler
 window plus a tiled SK/MB test area and Interlake window (100 km tiles,
 four conversion targets: crop, pasture, urban, barren). The web app has a region
 picker, province card and an optional 30 m pixel layer, and the report downloads
-as a Word file. A full 14-region run exists outside the repo; coverage by mapped
-area is in PR #61 and the data is not published. See `docs/build-list.md` and
+as a Word file. The 14-region MB/SK farming-zone run is published as `mb-sk-farming-zone`
+(10 of 14 regions covered by mapped area, so province totals stay labelled
+partial). See `docs/build-list.md` and
 `docs/handoffs/2026-11-27_build-session-2.md`. Merges by the auto-merge workflow
 do not trigger Pages; run `gh workflow run pages.yml --ref main` until
 `AUTO_MERGE_TOKEN` is set. Open GitHub issues and the build list are the live
