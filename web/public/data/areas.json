@@ -30,6 +30,16 @@
     ]
   },
   {
+    "id": "mb-sk-farming-zone",
+    "name": "Manitoba and Saskatchewan farming zone",
+    "bbox": [
+      -110.3717,
+      48.8189,
+      -96.1478,
+      55.834
+    ]
+  },
+  {
     "id": "sk-mb-estevan-melville",
     "name": "SK/MB test area (Estevan, Melita, Russell, Melville)",
     "bbox": [

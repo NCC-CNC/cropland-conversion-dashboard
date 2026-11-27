@@ -36,13 +36,28 @@ export function provinceCodes(s: ProvinceSummary): string[] {
 
 const pct = (f: number) => `${(f * 100).toFixed(1)}%`;
 
+/** Region name with its province, taken from an id such as "aspen-parkland-mb". */
+function withProvince(id: string, name: string): string {
+  const m = /-(mb|sk)$/.exec(id);
+  return m ? `${name} (${m[1].toUpperCase()})` : name;
+}
+
 /** Plain wording for a coverage block. Provincial wording is allowed only when `complete` is true. */
-export function coverageSentence(name: string, cov: Coverage, regionNames: string[]): string {
+export function coverageSentence(
+  name: string,
+  cov: Coverage,
+  covered: string[] = [],
+  partial: string[] = [],
+): string {
   if (cov.complete) {
     return `All ${cov.regions_total} farming-zone regions are covered, so these figures are the ${name} total for the farming zone.`;
   }
-  const run = regionNames.length > 0 ? ` Regions covered by this data: ${regionNames.join(', ')}.` : '';
-  return `Partial coverage: ${cov.regions_run.length} of ${cov.regions_total} farming-zone regions have data, about ${pct(cov.fraction)} of the farming-zone area. These figures describe only that data and are not a ${name} total.${run}`;
+  const list = (xs: string[]) => (xs.length > 0 ? ` ${xs.join(', ')}.` : '');
+  const part =
+    partial.length > 0
+      ? ` Regions where the Annual Crop Inventory maps too little of the area in the latest year or a baseline year, so they are only partly included:${list(partial)}`
+      : '';
+  return `Partial coverage: ${cov.regions_covered.length} of ${cov.regions_total} farming-zone regions are covered, and about ${pct(cov.fraction)} of the farming-zone area has data. These figures describe only that data and are not a ${name} total. Covered regions:${list(covered)}${part}`;
 }
 
 /**
@@ -85,7 +100,12 @@ export function buildProvinceCard(
     name,
     provincial,
     heading: provincial ? `${name} total` : `${name}: covered regions only`,
-    coverageText: coverageSentence(name, cov, regionsRun.map(regionName)),
+    coverageText: coverageSentence(
+      name,
+      cov,
+      p.regions.filter((r) => cov.regions_covered.includes(r)).map((r) => withProvince(r, regionName(r))),
+      p.regions.filter((r) => (cov.regions_partial ?? []).includes(r)).map((r) => withProvince(r, regionName(r))),
+    ),
     regionsRun,
     intervals,
   };

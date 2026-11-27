@@ -27,9 +27,17 @@ decision are listed at the bottom until settled, then move up. Updated
 |18|Web: region picker, province card (summary first, detail on request), tile loading|#28|3, 16, 17|merged (#57)|
 |19|By-class split caveat and 2025 non-crop note|#2|none|merged (#55)|
 |20|Keyed `meta.target_caveats` instead of pairing by position|#27|1, 3|merged (#57)|
-|21|Run each farming-zone region in tiled mode (fetch rasters for all 14 regions)|#28|16|done 2026-11-27: full 14 region run, 79 tiles planned, 71 written (8 have no 2025 data), 427,740 cells, about 23 min over 4 resumed runs, 0.73 GB peak; tiles 106 MB raw (max 2.7 MB), 10.7 MB gzipped, outside the repo and not committed. Coverage first measured as written-cell area (0.712 overall, 4 of 14 regions at 0.9, misleading for crop-dominated regions), then re-measured as mapped area (ACI pixels with data in the latest year and the baseline per region, cache key v2): 0.791 overall, 10 of 14 regions covered; the 4 uncovered are boreal regions (mid-boreal lowland MB 0.18, lowland SK 0.50, uplands SK 0.50, Interlake 0.82 from the 2011 gap only) where the ACI genuinely maps less. The all-region 2011 caveat now describes the province-wide pattern; the older ACI years do not map the far north, so the tile size guard now warns instead of aborting. Guard fix merged (#60); mapped-area coverage in PR #61. Generated 14-region data is not published or committed|
+|21|Run each farming-zone region in tiled mode (fetch rasters for all 14 regions)|#28|16|done 2026-11-27: full 14 region run, 79 tiles planned, 71 written (8 have no 2025 data), 427,740 cells, about 23 min over 4 resumed runs, 0.73 GB peak; tiles 106 MB raw (max 2.7 MB), 10.7 MB gzipped, outside the repo and not committed. Coverage first measured as written-cell area (0.712 overall, 4 of 14 regions at 0.9, misleading for crop-dominated regions), then re-measured as mapped area (ACI pixels with data in the latest year and the baseline per region, cache key v2): 0.791 overall, 10 of 14 regions covered; the 4 uncovered are boreal regions (mid-boreal lowland MB 0.18, lowland SK 0.50, uplands SK 0.50, Interlake 0.82 from the 2011 gap only) where the ACI genuinely maps less. The all-region 2011 caveat now describes the province-wide pattern; the older ACI years do not map the far north, so the tile size guard now warns instead of aborting. Guard fix merged (#60); mapped-area coverage in PR #61. The 14-region data is published as the area `mb-sk-farming-zone` (decision 2026-11-27: publish all 14, keep the province card labelled partial)|
 |22|Browser check of the nested and tiled data (keyboard, tabs, mobile, screen reader, map shading)|#27|11|partly done 2026-11-27 with a headless browser on the live site: area and region pickers, draw and results, 2011 caution tab, four target tabs, 30 m layer under 500 km2 (and the size hint above it), report download, Methods and caveats tab, no horizontal overflow at 390 px, no script errors. Still needs the owner: real phone and tablet, screen reader, Word|
 |23|Download the report as a Word document instead of Markdown||none|merged (#59); download verified on the live site, the file is a valid .docx with 12 tables; not yet opened in Word by the owner|
+
+## Settled decisions (2026-11-27)
+
+- Publish all 14 regions as `mb-sk-farming-zone` (102 MB). Three Boreal Plains
+  regions and Interlake Plain stay partial, so the province card is labelled
+  "covered regions only" and its text lists covered and partial regions.
+- Keep coverage judged on all baselines (2011 included).
+- Shapefile release `test-area-shapefiles-v1` is published.
 
 ## Settled decisions (2026-11-26)
 
@@ -58,9 +66,4 @@ decision are listed at the bottom until settled, then move up. Updated
 
 - Real phone, tablet and screen reader checks.
 - Validate conversion rates against independent sources (#6).
-- Judge region coverage on the 2016 and 2021 baselines only, not 2011? One line
-  in `_coverage_rows`; Interlake would pass, the three northern boreal regions
-  would not.
-- Publish the 14-region data (102 MB) or restrict the province view to the
-  farming zone only? Three Boreal Plains regions stay partial.
 - Open the Word report in Word and check tables and coordinate blocks.

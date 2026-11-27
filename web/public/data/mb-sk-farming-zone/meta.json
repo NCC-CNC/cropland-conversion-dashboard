@@ -1,0 +1,90 @@
+{
+  "area_id": "mb-sk-farming-zone",
+  "name": "Manitoba and Saskatchewan farming zone",
+  "bbox": [
+    -110.3717,
+    48.8189,
+    -96.1478,
+    55.834
+  ],
+  "cell_size_m": 1000,
+  "snapshots": [
+    2011,
+    2016,
+    2021,
+    2025
+  ],
+  "latest": 2025,
+  "natural_classes": [
+    "forest",
+    "grassland",
+    "wetland",
+    "shrubland"
+  ],
+  "intervals": [
+    {
+      "from": 2011,
+      "to": 2025,
+      "years": 14,
+      "note": "The 2011 to 2025 interval shows much more conversion than the later intervals (roughly 2.5 to 4.5 times the 2016 to 2025 interval across the farming zone), and part of that may be a mapping difference between years rather than real change. The 2011 map also covers less of the far north than later years. Prefer the 2016 and 2021 baselines."
+    },
+    {
+      "from": 2016,
+      "to": 2025,
+      "years": 9
+    },
+    {
+      "from": 2021,
+      "to": 2025,
+      "years": 4
+    }
+  ],
+  "targets": [
+    "crop",
+    "pasture",
+    "urban",
+    "barren"
+  ],
+  "contract_version": 3,
+  "tiled": true,
+  "tile_km": 100,
+  "regions": [
+    "aspen-parkland-mb",
+    "aspen-parkland-sk",
+    "boreal-transition-mb",
+    "boreal-transition-sk",
+    "cypress-upland-sk",
+    "interlake-plain-mb",
+    "lake-manitoba-plain-mb",
+    "mid-boreal-lowland-mb",
+    "mid-boreal-lowland-sk",
+    "mid-boreal-uplands-mb",
+    "mid-boreal-uplands-sk",
+    "mixed-grassland-sk",
+    "moist-mixed-grassland-sk",
+    "southwest-manitoba-uplands-mb"
+  ],
+  "method": "AAFC Annual Crop Inventory classes are grouped into natural (forest 200 to 230, grassland 110, wetland 80, shrubland 50), the conversion targets crop (agriculture and annual or specialty crops, codes 120 to 199 except 122), pasture and forage (122), urban and developed (34), exposed land and barren (30), and other (water, cloud, burnt area, greenhouse, peatland). A pixel counts as converted to a target when it is natural in the baseline year and in that target class in 2025; each target is reported separately and a pixel counts in one target only. To reduce classification noise, for every target a cell must also be crop in the most recent earlier snapshot between the baseline and the latest year (2024); isolated patches smaller than 0.5 ha (connected pixels, 30 m) are removed; no majority filter is applied; and natural cover in a baseline year excludes cells already mapped as crop in an earlier snapshot (likely fallow, forage rotation or mapping error; the 2011 baseline has no earlier snapshot); natural cover also excludes cells already mapped as pasture or forage or urban in an earlier snapshot (likely tame grass, hay or developed land rather than natural cover), so figures are lower than in earlier versions of this dashboard, which did not apply this rule. Earlier barren does not remove a cell from the baseline. Pasture and forage (ACI 122) is reported as its own target and is never added to crop. Converted pixels are summed by baseline natural class on a 1 km grid. Percent converted is converted divided by natural cover in the baseline year.",
+  "source": "AAFC Annual Crop Inventory, OGL-Canada-2.0, https://agriculture.canada.ca/atlas/annual-crop-inventory (ImageServer: https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory)",
+  "generated": "2026-11-27",
+  "caveats": [
+    "The split of natural cover by class (forest, shrubland, grassland, wetland) is unreliable across years. It can swing by tens of thousands of hectares without any real change, so treat the by-class rows as indicative and the total as more reliable than the split. Crop itself is mapped with reported accuracy of 85 to 90 percent or more.",
+    "The 2025 map classifies non-crop land differently from earlier years: shrubland almost disappears and wetland increases. This can distort by-class results for recent intervals, while crop detection is much less affected.",
+    "The Annual Crop Inventory classification method and ground data changed over the series, so some change between years is a mapping artefact rather than a land change. Early years (2011) are the least reliable.",
+    "Native grassland cannot be separated from tame grass and pasture, and some grassland counted here may be tame.",
+    "Each conversion target is detected separately from natural cover, and a cell counts in one target only. Natural cover lost to water or other uses is not shown, and land returning to natural cover is not subtracted.",
+    "Conversion is detected from natural to crop only. Natural cover lost to urban, water or other uses is not shown, and cropland returning to grass is not subtracted.",
+    "A noise filter (persistence and minimum patch size) removes isolated single year flips, but it also removes real small conversions, so hectares are conservative for small fields and linear clearings.",
+    "Results are summed over 1 km grid cells whose centre lies inside the drawn area. The edge of a polygon is therefore approximate, and results for areas smaller than a few square kilometres are very uncertain.",
+    "This is a screening aid for planning and grant context, not a parcel level or legal grade result, and it does not say why land was converted.",
+    "Conversion to pasture and forage is less certain than conversion to crop. Native grassland and seeded pasture look alike in the Annual Crop Inventory, so some of this may be existing grass that was reseeded or relabelled. It is not added to the cropland figure.",
+    "Conversion to urban and developed land is mapped less accurately than crop. Roads, rail lines, well pads and small buildings can appear and disappear between years, so treat small values as uncertain.",
+    "Conversion to barren and exposed land is the least reliable target. Bare soil, gravel, dry wetlands and recently cleared land are easily confused, and the label can change from year to year without a real change on the ground.",
+    "The 2011 to 2025 interval shows much more conversion than the later intervals (roughly 2.5 to 4.5 times the 2016 to 2025 interval across the farming zone), and part of that may be a mapping difference between years rather than real change. The 2011 map also covers less of the far north than later years. Prefer the 2016 and 2021 baselines."
+  ],
+  "target_caveats": {
+    "pasture": "Conversion to pasture and forage is less certain than conversion to crop. Native grassland and seeded pasture look alike in the Annual Crop Inventory, so some of this may be existing grass that was reseeded or relabelled. It is not added to the cropland figure.",
+    "urban": "Conversion to urban and developed land is mapped less accurately than crop. Roads, rail lines, well pads and small buildings can appear and disappear between years, so treat small values as uncertain.",
+    "barren": "Conversion to barren and exposed land is the least reliable target. Bare soil, gravel, dry wetlands and recently cleared land are easily confused, and the label can change from year to year without a real change on the ground."
+  }
+}
