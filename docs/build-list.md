@@ -27,7 +27,7 @@ decision are listed at the bottom until settled, then move up. Updated
 |18|Web: region picker, province card (summary first, detail on request), tile loading|#28|3, 16, 17|in PR|
 |19|By-class split caveat and 2025 non-crop note|#2|none|merged (#55)|
 |20|Keyed `meta.target_caveats` instead of pairing by position|#27|1, 3|in PR|
-|21|Run each farming-zone region in tiled mode (fetch rasters for all 14 regions)|#28|16|runner built (`python -m cropconv.regional`, tested, one region smoke test done); the full 14 region run (79 tiles, about 30 min) is not yet done|
+|21|Run each farming-zone region in tiled mode (fetch rasters for all 14 regions)|#28|16|done 2026-11-27: full 14 region run, 79 tiles planned, 71 written (8 have no 2025 data), 427,740 cells, about 23 min over 4 resumed runs, 0.73 GB peak; tiles 106 MB raw (max 2.7 MB), 10.7 MB gzipped, outside the repo and not committed. Coverage 0.712 overall, only 4 of 14 regions reach 0.9 (cells with no natural cover are not written, so crop-dominated regions read partial); the older ACI years do not map the far north, so the tile size guard now warns instead of aborting|
 |22|Browser check of the nested and tiled data (keyboard, tabs, mobile, screen reader, map shading)|#27|11|queued|
 
 ## Settled decisions (2026-11-26)

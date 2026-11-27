@@ -167,9 +167,15 @@ def compute_tile(col, row, readers, years, latest, params, targets, tile_km=tili
     top = max(valid.values())
     if top == 0:
         return None  # outside the data (sea, other country)
+    if valid[latest] == 0:
+        # Far north: only an older year maps it, so there is nothing to compare against the latest.
+        print(f"warning: tile {col}_{row}: no {latest} data, skipped", flush=True)
+        return None
     for y, v in valid.items():
         if v < 0.5 * top:
-            raise ValueError(f"tile {col}_{row} {y}: only {v:.0%} of the window has data against {top:.0%} in another year")
+            # The ACI mapped extent differs by year (the far north is mapped only in some years).
+            # Unmapped pixels are not natural cover and not conversion, so the tile is kept.
+            print(f"warning: tile {col}_{row} {y}: only {v:.0%} of the window is mapped against {top:.0%}", flush=True)
 
     xs = grid[0] + (np.arange(n_cols) + 0.5) * agg.CELL_M
     ys = grid[3] - (np.arange(n_rows) + 0.5) * agg.CELL_M
