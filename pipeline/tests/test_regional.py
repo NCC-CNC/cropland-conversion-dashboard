@@ -111,15 +111,30 @@ def test_no_data_tile_is_none():
     assert rgl.compute_tile(0, 0, z, YEARS, 2025, PARAMS, TARGETS, tile_km=TILE_KM) is None
 
 
-def test_missing_year_is_an_error():
+def sparse_year(bad):
     def r(year, raster):
         a = world(year, raster)
-        if year == 2021:
+        if year == bad:
             a[:] = 0
             a[:5, :5] = 131
         return rgl.arr_to_groups(a, KNOWN, GROUP_LUT, NATURAL_LUT)
-    with pytest.raises(ValueError, match="2021"):
-        rgl.compute_tile(0, 0, r, YEARS, 2025, PARAMS, TARGETS, tile_km=TILE_KM)
+    return r
+
+
+def test_latest_year_with_no_data_skips_the_tile(capsys):
+    def r(year, raster):
+        a = world(year, raster)
+        if year == 2025:
+            a[:] = 0
+        return rgl.arr_to_groups(a, KNOWN, GROUP_LUT, NATURAL_LUT)
+    assert rgl.compute_tile(0, 0, r, YEARS, 2025, PARAMS, TARGETS, tile_km=TILE_KM) is None
+    assert "skipped" in capsys.readouterr().out
+
+
+def test_sparsely_mapped_year_warns_and_runs(capsys):
+    for bad in (2021, 2025):
+        rgl.compute_tile(0, 0, sparse_year(bad), YEARS, 2025, PARAMS, TARGETS, tile_km=TILE_KM)
+        assert str(bad) in capsys.readouterr().out
 
 
 def synthetic_regions():

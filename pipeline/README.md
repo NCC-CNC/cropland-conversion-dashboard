@@ -328,6 +328,9 @@ a coverage check say so (ADR 0004).
 - `--drop-rasters` deletes a tile's rasters once its result is cached. Rasters are about
   58 MB per tile (five years), 4.6 GB for all 79 if kept. `--cache-dir` moves rasters and
   results out of the OneDrive folder. `--workers N` sets parallel downloads (default 2).
+- Older ACI years map less of the far north than 2025 (2011 about 39 percent of one northern tile).
+  A year with under half the best year's data logs a warning and the tile is kept (unmapped pixels are
+  neither natural cover nor conversion); a tile with no data in the latest year is skipped.
 - Tiles of other tile sizes work (`--tiled KM`) but 100 km is what the web app expects.
 
 Measured (southwest-manitoba-uplands-mb, 3 tiles, 2 workers, one-year-at-a-time
