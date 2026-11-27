@@ -65,5 +65,7 @@ decision are listed at the bottom until settled, then move up. Updated
 ## Needs the owner
 
 - Real phone, tablet and screen reader checks (automated axe and layout checks pass; see item 22).
-- Validate conversion rates against independent sources (#6).
+- Validate conversion rates against independent sources (#6). A desk review and
+  rough plausibility check is in `docs/design/07_validation_sources.md`; the
+  owner still needs to name usable regional analyses and confirm permission.
 - Open the Word report in Word and check tables and coordinate blocks.
