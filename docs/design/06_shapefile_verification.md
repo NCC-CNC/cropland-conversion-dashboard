@@ -26,7 +26,7 @@ All 17 years pass. Every class matches to floating point rounding
 2e-14 percent). No class was flagged and no class was present in only one source.
 
 | Year | Classes checked | Max abs diff (km2) | Max rel diff (%) | Result |
-|------|-----------------|--------------------|------------------|--------|
+| ---- | --------------- | ------------------ | ---------------- | ------ |
 | 2009 | 30 | 4e-16 | 1e-14 | pass |
 | 2010 | 34 | 9e-13 | 2e-14 | pass |
 | 2011 | 26 | 5e-13 | 2e-14 | pass |
