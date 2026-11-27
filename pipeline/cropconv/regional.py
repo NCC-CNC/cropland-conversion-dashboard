@@ -59,10 +59,10 @@ RESULTS_DIR = "regional"  # under the cache directory
 PX = fx.PIXEL_M
 
 CAVEAT_2011 = (
-    "The 2011 map shows far more natural cover than 2016 in the Saskatchewan prairie test area (about two thirds "
-    "more at the default filter settings), so much of the apparent conversion in the 2011 to 2025 interval may be a "
-    "mapping difference between years. Compare natural cover across baselines before relying on it, and prefer "
-    "the 2016 and 2021 baselines."
+    "The 2011 to 2025 interval shows much more conversion than the later intervals (roughly 2.5 to 4.5 times the "
+    "2016 to 2025 interval across the farming zone), and part of that may be a mapping difference between years "
+    "rather than real change. The 2011 map also covers less of the far north than later years. Prefer the 2016 and "
+    "2021 baselines."
 )
 
 
@@ -128,13 +128,13 @@ def cache_key(years, latest, params, targets, tile_km, sensitivity, rows) -> str
         "years": list(years), "latest": latest, "params": asdict(params), "targets": list(targets),
         "tile_km": tile_km, "halo": HALO_M, "sensitivity": bool(sensitivity), "baselines": rn.BASELINES,
         "classes": [list(map(str, r.values())) for r in rows], "presets": [p[0] for p in rn.PRESETS],
-        "v": 1,
+        "v": 2,  # 2: per-cell mapped area for the coverage measure
     }, sort_keys=True)
     return hashlib.sha1(blob.encode()).hexdigest()[:12]
 
 
 def read_stack_year(year, raster, known, group_lut, natural_lut, fetch_fn=None):
-    """One year of one tile as (group array, natural index array, valid fraction), raster freed."""
+    """One year of one tile as (group array, natural index array, valid fraction, mapped mask), raster freed."""
     path = (fetch_fn or fx.fetch_year)(year, raster)
     arr, transform = fx.read_year(path)
     if abs(transform.a - PX) > 1e-6 or abs(transform.e + PX) > 1e-6:
@@ -143,15 +143,16 @@ def read_stack_year(year, raster, known, group_lut, natural_lut, fetch_fn=None):
 
 
 def arr_to_groups(arr, known, group_lut, natural_lut):
+    """(group array, natural index array, valid fraction, mapped mask); code 0 is unmapped."""
     fx.assert_codes_unmodified(arr, known)
-    valid = float((arr != 0).mean())
-    return group_lut[arr], natural_lut[arr], valid
+    mapped = arr != 0
+    return group_lut[arr], natural_lut[arr], float(mapped.mean()), mapped
 
 
 def compute_tile(col, row, readers, years, latest, params, targets, tile_km=tiling.TILE_KM, sensitivity=False):
     """Cells of one tile as a dict of numpy arrays (None for a tile with no data at all).
 
-    readers(year, raster) -> (groups, naturals, valid fraction) reads one year, so only one raw
+    readers(year, raster) -> (groups, naturals, valid fraction, mapped mask) reads one year, so only one raw
     raster exists at a time. Returned arrays cover the base cell set (cells with natural cover under
     the default settings, plus, with sensitivity, under any preset); `keep` marks the default ones.
     """
@@ -159,9 +160,9 @@ def compute_tile(col, row, readers, years, latest, params, targets, tile_km=tili
     n_cols = (grid[2] - grid[0]) // agg.CELL_M
     n_rows = (grid[3] - grid[1]) // agg.CELL_M
     n_cells = n_cols * n_rows
-    groups, naturals, valid = {}, {}, {}
+    groups, naturals, valid, mapped = {}, {}, {}, {}
     for y in years:  # one year at a time
-        groups[y], naturals[y], valid[y] = readers(y, raster)
+        groups[y], naturals[y], valid[y], mapped[y] = readers(y, raster)
         if groups[y].shape != groups[years[0]].shape:
             raise ValueError(f"{y}: shape differs from {years[0]}")
     top = max(valid.values())
@@ -190,6 +191,12 @@ def compute_tile(col, row, readers, years, latest, params, targets, tile_km=tili
     pm2 = float(np.mean(pixel_m2))
     flat = np.arange(n_cells)
     core = ((flat % n_cols >= c0) & (flat % n_cols < c1) & (flat // n_cols >= c0) & (flat // n_cols < c1))
+
+    # Mapped area (pixels with data, any class) per core cell and year: the coverage measure.
+    mp_cells = np.flatnonzero(core)
+    mp_ha = np.stack([np.bincount(cells[mapped[y] & (cells >= 0)], minlength=n_cells)[mp_cells] * pixel_ha[mp_cells]
+                      for y in years])
+    del mapped
 
     res = rn.interval_masks(groups, naturals, latest, params, pm2, years, targets)
     nat = {b: agg.natural_counts(res[b][0], cells, n_cells) for b in res}
@@ -225,6 +232,11 @@ def compute_tile(col, row, readers, years, latest, params, targets, tile_km=tili
     for (pid, b), (nha, cha) in sens.items():
         out[f"sens__{pid}__{b}__nat"] = nha[sel]
         out[f"sens__{pid}__{b}__conv"] = cha[sel]
+    anym = (mp_ha > 0).any(axis=0)
+    out["mp_lon"] = np.round(lon[mp_cells][anym], 5)
+    out["mp_lat"] = np.round(lat[mp_cells][anym], 5)
+    out["mp_years"] = np.array(years, dtype=np.int32)
+    out["mp_ha"] = np.round(mp_ha[:, anym], 2)
     out["persist"] = np.array([res[b][2] or 0 for b in sorted(res)], dtype=np.int32)
     out["baselines"] = np.array(sorted(res), dtype=np.int32)
     del groups, naturals
@@ -286,6 +298,7 @@ def assemble(out_area: Path, area_id: str, tile_files: dict, regions: dict, sele
     region_cells = {r: 0 for r in order}
     region_area = {r: 0.0 for r in order}
     region_parts = {r: [] for r in order}
+    region_mapped = {r: {} for r in order}
     sens_sum: dict = {}
     dropped = 0
     persist = {}
@@ -298,6 +311,12 @@ def assemble(out_area: Path, area_id: str, tile_files: dict, regions: dict, sele
             persist[b] = p or None
         ids = rg.assign_regions(d["lon"], d["lat"], regions)
         ok = np.array([i in chosen for i in ids], dtype=bool)
+        if "mp_ha" in d and d["mp_lon"].size:
+            mids = rg.assign_regions(d["mp_lon"], d["mp_lat"], regions)
+            for rid in {i for i in mids if i in chosen}:
+                sel = mids == rid
+                for y, ha in zip(d["mp_years"].tolist(), d["mp_ha"][:, sel].sum(axis=1).tolist()):
+                    region_mapped[rid][y] = region_mapped[rid].get(y, 0.0) + ha
         if sensitivity:
             for k in d:
                 if k.startswith("sens__"):
@@ -329,8 +348,9 @@ def assemble(out_area: Path, area_id: str, tile_files: dict, regions: dict, sele
         del d, part, data
     summary = [{"id": rid, "name": names.get(rid, rid), "cells": region_cells[rid],
                 "area_ha": round(region_area[rid], 2), "tiles": region_tiles[rid],
-                "totals": summaries.add_totals(region_parts[rid])}
-               for rid in order if region_cells[rid]]
+                "totals": summaries.add_totals(region_parts[rid]),
+                "mapped_km2": {str(y): round(v / 100.0, 1) for y, v in sorted(region_mapped[rid].items())}}
+               for rid in order if region_cells[rid] or region_mapped[rid]]
     index = {
         "area_id": area_id, "contract_version": 3, "crs": "EPSG:3978", "tile_m": tile_km * 1000,
         "cell_size_m": agg.CELL_M, "cells": sum(t["cells"] for t in tiles), "regions": order,
@@ -429,8 +449,7 @@ def run_regions(out_dir: Path, selected: list[str] | None, params, latest=None, 
                 log(f"WARNING legend check {y}: {problems}")
 
     def readers(year, raster):
-        group, natural, valid = read_stack_year(year, raster, known, group_lut, natural_lut)
-        return group, natural, valid
+        return read_stack_year(year, raster, known, group_lut, natural_lut)
 
     def prefetch(t):
         raster = tile_window(*t, tile_km)[0]

@@ -22,9 +22,11 @@ from . import regions as rg
 SUMMARY_NAME = "province_summary.json"
 PROVINCES = {"MB": "Manitoba", "SK": "Saskatchewan"}
 ALL = "all"
-# A region counts as covered when the area's cells span at least this share of its
-# area. Cells with no natural cover and no conversion are not written, so cell area
-# understates ground covered and the bar is below 1.
+# A region counts as covered when at least this share of its area is mapped (has ACI
+# data, any class) in the latest year and in the baseline of the interval. Mapped area is
+# measured on the pixels, so crop-dominated regions whose cells are not written (no
+# natural cover) still count as fully processed. Indexes without `mapped_km2` fall back
+# to the area of the written cells.
 COVERED_FRACTION = 0.9
 DEFAULT_OUT = Path(__file__).resolve().parents[2] / "web" / "public" / "data"
 
@@ -84,23 +86,36 @@ def with_percent(totals: dict) -> dict:
     return out
 
 
-def _coverage_rows(entries: list[dict], areas_km2: dict, ids: list[str]) -> list[dict]:
+def _coverage_rows(entries: list[dict], areas_km2: dict, ids: list[str], latest=None, baselines=()) -> list[dict]:
     by_id = {e["id"]: e for e in entries}
     rows = []
     for rid in ids:
         full = areas_km2.get(rid)
         e = by_id.get(rid)
         cell_km2 = round(e["area_ha"] / 100.0, 1) if e else 0.0
-        frac = round(min(1.0, cell_km2 / full), 3) if (e and full) else 0.0
-        rows.append({"id": rid, "province": province_of(rid), "run": e is not None,
-                     "region_area_km2": round(full, 1) if full else None,
-                     "cell_area_km2": cell_km2, "fraction": frac, "covered": frac >= COVERED_FRACTION})
+        row = {"id": rid, "province": province_of(rid), "run": e is not None,
+               "region_area_km2": round(full, 1) if full else None, "cell_area_km2": cell_km2}
+        mapped = (e or {}).get("mapped_km2")
+        if e and full and mapped and latest is not None:
+            mf = {y: round(min(1.0, v / full), 3) for y, v in mapped.items()}
+            by_iv = {}
+            for b in baselines:
+                by_iv[f"{b}-{latest}"] = min(mf.get(str(latest), 0.0), mf.get(str(b), 0.0))
+            frac = min(by_iv.values()) if by_iv else mf.get(str(latest), 0.0)
+            row.update({"fraction": round(frac, 3), "covered": frac >= COVERED_FRACTION,
+                        "mapped_km2": mapped, "mapped_fraction": mf,
+                        "covered_by_interval": {k: v >= COVERED_FRACTION for k, v in by_iv.items()}})
+            row["mapped_area_km2"] = round(frac * full, 1)
+        else:
+            frac = round(min(1.0, cell_km2 / full), 3) if (e and full) else 0.0
+            row.update({"fraction": frac, "covered": frac >= COVERED_FRACTION})
+        rows.append(row)
     return rows
 
 
 def _block(rows: list[dict]) -> dict:
     full = math.fsum(r["region_area_km2"] or 0.0 for r in rows)
-    got = math.fsum(min(r["cell_area_km2"], r["region_area_km2"] or 0.0) for r in rows)
+    got = math.fsum(r.get("mapped_area_km2", min(r["cell_area_km2"], r["region_area_km2"] or 0.0)) for r in rows)
     return {
         "complete": bool(rows) and all(r["covered"] for r in rows),
         "regions_total": len(rows),
@@ -131,7 +146,9 @@ def build_summary(index: dict, meta: dict, regions: dict | None = None) -> dict:
     areas = rg.region_areas_km2(regions)
     entries = [e for e in index["region_summary"] if province_of(e["id"])]
     all_ids = sorted(i for i in areas if province_of(i))
-    rows = _coverage_rows(entries, areas, all_ids)
+    latest = meta.get("latest")
+    baselines = sorted(iv["from"] for iv in meta.get("intervals", []) if iv.get("to") == latest)
+    rows = _coverage_rows(entries, areas, all_ids, latest, baselines)
     provinces = {}
     for code, name in PROVINCES.items():
         mine = [e for e in entries if province_of(e["id"]) == code]

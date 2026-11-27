@@ -314,7 +314,8 @@ a coverage check say so (ADR 0004).
   written. That makes the 0.5 ha patch filter and the 3x3 majority filter give the same
   cell values as one huge window (tested against a single big window on synthetic data).
 - Resume: a tile's result is cached as `cache/regional/<key>/<col>_<row>.npz`, where the
-  key hashes years, filters, targets and tile size, and rasters are cached by `fetch.py`.
+  key hashes years, filters, targets, tile size and the result format version (the npz also stores
+  per-cell mapped area for the coverage measure), and rasters are cached by `fetch.py`.
   Stop and rerun at will; a failed download leaves finished tiles in place. Changing a
   filter flag starts a fresh set of results. `--limit N` runs the first N tiles.
 - Region selection: `--regions a,b` picks regions. Cells outside the chosen regions are
@@ -331,6 +332,9 @@ a coverage check say so (ADR 0004).
 - Older ACI years map less of the far north than 2025 (2011 about 39 percent of one northern tile).
   A year with under half the best year's data logs a warning and the tile is kept (unmapped pixels are
   neither natural cover nor conversion); a tile with no data in the latest year is skipped.
+- Coverage is mapped area, not written-cell area: per tile and year the pixels with data (any class)
+  are summed by region, and a region is covered when at least 0.9 of its area is mapped in the latest
+  year and in each baseline (`covered_by_interval` shows which baseline fails).
 - Tiles of other tile sizes work (`--tiled KM`) but 100 km is what the web app expects.
 
 Measured (southwest-manitoba-uplands-mb, 3 tiles, 2 workers, one-year-at-a-time

@@ -279,6 +279,32 @@ def test_drop_rasters_removes_only_tile_rasters(patched, tmp_path, monkeypatch):
     assert len(removed) == 4 * len(YEARS) and all(n.endswith(".tif") for n in removed)
 
 
+def test_mapped_area_counts_unmapped_pixels_out(capsys):
+    full = rgl.compute_tile(0, 0, readers, YEARS, 2025, PARAMS, TARGETS, tile_km=TILE_KM)
+    assert full["mp_years"].tolist() == YEARS
+    assert full["mp_ha"].sum(axis=1).tolist() == pytest.approx([30 * 30 * 100.0] * 5, rel=0.01)  # 30 km square, ha
+    north = lambda year, raster: rgl.arr_to_groups(_north_unmapped(year, raster), KNOWN, GROUP_LUT, NATURAL_LUT)
+    part = rgl.compute_tile(0, 0, north, YEARS, 2025, PARAMS, TARGETS, tile_km=TILE_KM)
+    ha = dict(zip(part["mp_years"].tolist(), part["mp_ha"].sum(axis=1).tolist()))
+    assert ha[2016] == pytest.approx(full["mp_ha"].sum(axis=1)[1], rel=0.01)
+    assert ha[2011] == pytest.approx(0.5 * ha[2016], rel=0.05)
+
+
+def _north_unmapped(year, raster):
+    a = world(year, raster)
+    if year == 2011:
+        a[: a.shape[0] // 2] = 0  # the top (north) half is unmapped in 2011
+    return a
+
+
+def test_mapped_area_reaches_the_index(patched, tmp_path):
+    rgl.run_regions(tmp_path / "data", None, PARAMS, tile_km=TILE_KM, check_legend=False, area_id="t")
+    index = json.loads((tmp_path / "data" / "t" / "index.json").read_text())
+    for e in index["region_summary"]:
+        assert set(e["mapped_km2"]) == {str(y) for y in YEARS}
+        assert e["mapped_km2"]["2025"] >= e["area_ha"] / 100.0 * 0.99
+
+
 def test_cache_key_changes_with_settings():
     k = lambda **kw: rgl.cache_key(YEARS, 2025, kw.get("params", PARAMS), TARGETS, 100, kw.get("s", False), ROWS)
     assert k() == k()

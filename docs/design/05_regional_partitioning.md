@@ -262,11 +262,20 @@ sum of the single `cells.json` (checked on the real run).
 - **Coverage**: partial coverage must never be shown as a provincial total.
   `coverage` lists the 14 farming-zone regions from `regions.json` with
   `run` (present in this area), `cell_area_km2` against `region_area_km2`,
-  and `fraction`. A region is `covered` when its cells span at least 90% of its
-  area (`covered_fraction_min`; cells with no natural cover are not written, so
-  the cell area slightly understates ground covered). `complete` is true only
+  and `fraction`. A region is `covered` when at least 90% of its area is
+  mapped (has ACI data, any class) in the latest year and in each baseline
+  (`covered_fraction_min`). Mapped area is measured on the 30 m pixels per
+  100 km tile and summed by region (a 1 km cell goes to the region holding its
+  centre), so crop-dominated regions, whose cells with no natural cover are not
+  written, still count as fully processed; the unwritten cells are not a gap.
+  Additive per-region fields: `mapped_km2` and `mapped_fraction` (by year),
+  `covered_by_interval` (for example `"2011-2025": false`; the 2011 map leaves
+  out part of the far north) and `mapped_area_km2`. `fraction` is the lowest
+  of the intervals' shares and `covered` requires every interval, so one
+  baseline with a gap uncovers the region; the per-interval flags let a reader
+  see which. `complete` is true only
   when every region is covered; the same block sits in each province.
-  `fraction` is the covered area over the farming-zone area. The web must call
+  The block's `fraction` is the mapped area over the farming-zone area. The web must call
   the figures a provincial total only when that province's
   `coverage.complete` is true, and otherwise name the covered regions and show
   the fraction.
