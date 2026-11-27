@@ -56,8 +56,8 @@ Issues #1, #2, #3 and #6.
 
 - Province totals must not be shown until `coverage.complete` is true.
 - The demo fixture is still flat v1 (no keyed caveats or sensitivity block).
-- No browser tests are committed; the headless checks were run from a scratch
-  folder and are not in CI.
+- Browser checks now live in `web/e2e/` and run in CI (added after this
+  handoff); they use a shared polygon link, not hand-drawing.
 
 ## Working notes
 

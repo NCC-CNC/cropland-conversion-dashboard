@@ -59,7 +59,9 @@ format is the contract in `docs/design/02_mvp_data_contract.md`. See
 Run from `web/` (Node 20.19 or newer):
 
 - `npm ci` then `npm run dev` for the dev server.
-- `npm run typecheck`, `npm test`, `npm run build`: what CI runs.
+- `npm run typecheck`, `npm test`, `npm run build`: what CI runs, plus
+  `npm run test:e2e` (Playwright and axe against the built site; first run
+  needs `npx playwright install chromium`).
 - `npm run fixture` regenerates the synthetic demo data.
 
 Run from `pipeline/` (Python 3.12 or newer, venv with

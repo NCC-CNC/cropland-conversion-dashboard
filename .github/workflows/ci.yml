@@ -83,6 +83,33 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 7
+
   pipeline:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -101,7 +128,7 @@ jobs:
       - run: python -m pytest
 
   checks:
-    needs: [changes, repo-hygiene, web, pipeline]
+    needs: [changes, repo-hygiene, web, e2e, pipeline]
     if: always()
     runs-on: ubuntu-latest
     steps:
