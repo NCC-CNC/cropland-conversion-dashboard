@@ -165,22 +165,21 @@ Whole window, default filter, ha converted (percent of baseline natural):
 |Interval|Natural ha|Converted ha|Percent|Per year|
 |---|---|---|---|---|
 |2011 to 2025|35,300|3,464|9.8|247 ha|
-|2016 to 2025|48,808|3,888|8.0|432 ha|
-|2021 to 2025|41,019|1,599|3.9|400 ha|
+|2016 to 2025|30,266|1,257|4.2|140 ha|
+|2021 to 2025|26,108|560|2.1|140 ha|
 
-By class for 2016 to 2025: grassland 2,722 ha (11.9 percent), wetland 715 ha
-(5.7), shrubland 291 ha (3.3), forest 160 ha (3.4).
+These figures include the prior pasture and urban exclusion (default since
+2026-11-26). Before that rule the 2016 and 2021 rows were 48,808 ha natural,
+3,888 ha converted (8.0 percent) and 41,019 ha, 1,599 ha (3.9 percent).
 
-From 2016 and 2021 baselines the loss is about 400 to 430 ha per year, roughly
-1 percent of remaining natural cover per year. That is high but plausible for
-parkland where the remnants are unprotected, and the two intervals agree. With
-latest year 2024 instead of 2025 the rate is again 410 to 420 ha per year
-(`--latest 2024`), so the 2025 map does not drive the result.
+From the 2016 and 2021 baselines the loss is about 140 ha per year, roughly
+0.5 percent of remaining natural cover per year, and the two intervals agree.
+Before the prior use exclusion the rate was 400 to 430 ha per year.
 
 Worries to keep in mind:
 
 - The 2011 baseline is not comparable. Natural cover is 35,300 ha in 2011
-  against 48,800 ha (default, 2016) and 41,000 ha (2021), because 2011 maps 25
+  against 30,300 ha (default, 2016) and 26,100 ha (2021), because 2011 maps 25
   percent of the window as pasture and only 7.6 percent as grassland (2016:
   11 percent and 17 percent). The 2011 interval therefore understates
   conversion and its percentages should not be compared with the others.

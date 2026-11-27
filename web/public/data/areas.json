@@ -2,11 +2,41 @@
   {
     "id": "ab-parkland-stettler",
     "name": "Alberta Parkland test window (Stettler area)",
-    "bbox": [-113.0747, 52.0652, -112.3416, 52.5148]
+    "bbox": [
+      -113.0747,
+      52.0652,
+      -112.3416,
+      52.5148
+    ]
   },
   {
     "id": "demo-fixture",
     "name": "Demo fixture (SYNTHETIC data)",
-    "bbox": [-106.5, 52.2, -105.7, 52.7]
+    "bbox": [
+      -106.5,
+      52.2,
+      -105.7,
+      52.7
+    ]
+  },
+  {
+    "id": "mb-interlake",
+    "name": "MB test window (Interlake)",
+    "bbox": [
+      -98.0473,
+      50.3285,
+      -96.5687,
+      51.2654
+    ]
+  },
+  {
+    "id": "sk-mb-estevan-melville",
+    "name": "SK/MB test area (Estevan, Melita, Russell, Melville)",
+    "bbox": [
+      -103.3401,
+      49.1242,
+      -100.9806,
+      51.0397
+    ]
   }
 ]

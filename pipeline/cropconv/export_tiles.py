@@ -248,11 +248,14 @@ def export_area(area_id, out_dir: Path, params, latest=None, targets=None, min_z
     transform = Affine(fx.PIXEL_M, 0, raster[0], 0, -fx.PIXEL_M, raster[3])
 
     fs = FeatureSet()
+    persist_years = {}
     t0 = time.time()
     for b in rn.BASELINES:  # one interval at a time keeps masks small
         if b >= latest:
             continue
         py = cv.persistence_year(b, latest, years)
+        if py is not None:
+            persist_years[b] = py
         nat = cv.clean_baseline(naturals[b], [groups[y] for y in years if y < b], params)
         masks = cv.conversion_masks(nat > 0, groups[latest], groups[py] if py is not None else None,
                                     params, pm2, targets)
@@ -272,7 +275,7 @@ def export_area(area_id, out_dir: Path, params, latest=None, targets=None, min_z
                        "4-connected patches per interval, target and natural class.",
         "attribution": "AAFC Annual Crop Inventory, OGL-Canada-2.0",
         "latest": latest, "intervals": [b for b in rn.BASELINES if b < latest], "targets": targets,
-        "method": rn.describe_method(latest, params, {}, targets),
+        "method": rn.describe_method(latest, params, persist_years, targets),
     }
     path = out_dir / f"{area_id}.pmtiles"
     counts = write_pmtiles(fs, path, min_zoom, max_zoom, bounds, metadata)

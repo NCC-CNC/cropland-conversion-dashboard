@@ -42,11 +42,11 @@ AREAS = {
     "sk-mb-estevan-melville": {
         "name": "SK/MB test area (Estevan, Melita, Russell, Melville)",
         "bbox_corners": True,  # rectangle around the four towns, see export_shapes
-        "interval_notes": {2011: "The 2011 map shows about 40 percent more natural cover than 2016 in this area, so "
+        "interval_notes": {2011: "The 2011 map shows about two thirds more natural cover than 2016 in this area, so "
                                  "this interval is unreliable. Prefer the 2016 and 2021 baselines."},
         "extra_caveats": [
             "The 2011 to 2025 interval for this area is unreliable: the 2011 map shows far more natural cover than 2016 "
-            "(about 40 percent more at the same filter settings), so much of the apparent conversion is likely a "
+            "(about two thirds more at the default filter settings), so much of the apparent conversion is likely a "
             "mapping difference between years. Prefer the 2016 and 2021 baselines.",
         ],
     },

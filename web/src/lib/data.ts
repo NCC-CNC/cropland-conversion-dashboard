@@ -13,10 +13,32 @@ import type {
 
 const base = import.meta.env.BASE_URL;
 
+/** Read a response as JSON, or throw an error that names the file and says what went wrong. */
+export async function readJson<T>(res: Response, path: string): Promise<T> {
+  if (!res.ok) {
+    throw new Error(`Could not load ${path}: the server answered HTTP ${res.status}${res.status === 404 ? ' (file not found)' : ''}.`);
+  }
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    const looksHtml = /^\s*<(!doctype|html)/i.test(text);
+    throw new Error(
+      looksHtml
+        ? `Could not load ${path}: the server sent a web page instead of data, so the file is probably missing or the dev server needs a restart.`
+        : `Could not load ${path}: the file is not valid JSON.`,
+    );
+  }
+}
+
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${base}data/${path}`);
-  if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status})`);
-  return (await res.json()) as T;
+  let res: Response;
+  try {
+    res = await fetch(`${base}data/${path}`);
+  } catch {
+    throw new Error(`Could not load ${path}: the request failed (network error or offline).`);
+  }
+  return readJson<T>(res, path);
 }
 
 /** Flat form has arrays as values (crop only); the nested form has objects keyed by target. */
