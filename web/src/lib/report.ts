@@ -41,61 +41,102 @@ export interface ReportInput {
   generatedAt: string;
 }
 
-/** Markdown overview: methods, caveats, selection coordinates and summary statistics. */
-export function buildReport(r: ReportInput): string {
+/** Format-neutral report content, rendered to Word (docx) or to Markdown. */
+export type ReportBlock =
+  | { t: 'h'; level: 1 | 2 | 3 | 4; text: string }
+  | { t: 'p'; text: string; boldLead?: string }
+  | { t: 'ul'; items: string[] }
+  | { t: 'table'; head: string[]; rows: string[][]; right: number[] }
+  | { t: 'code'; text: string };
+
+/** The report: methods, caveats, selection coordinates and summary statistics. */
+export function buildReportDoc(r: ReportInput): ReportBlock[] {
   const { summaries, meta, poly } = r;
   const summary = summaries[0];
-  const out: string[] = [];
-  out.push('# Cropland conversion summary', '');
-  out.push(`Study area: ${meta.name} (${meta.area_id})`);
-  out.push(`Report generated: ${r.generatedAt}`);
-  out.push(`Data generated: ${meta.generated}`);
-  out.push(`Link to reopen this selection: ${r.url}`, '');
+  const out: ReportBlock[] = [];
+  const h = (level: 1 | 2 | 3 | 4, text: string) => out.push({ t: 'h', level, text });
+  const p = (text: string, boldLead?: string) => out.push({ t: 'p', text, boldLead });
+  h(1, 'Cropland conversion summary');
+  p(`Study area: ${meta.name} (${meta.area_id})`);
+  p(`Report generated: ${r.generatedAt}`);
+  p(`Data generated: ${meta.generated}`);
+  p(`Link to reopen this selection: ${r.url}`);
 
-  out.push('## Selection', '');
-  out.push(`- Selected area: ${r.areaKm2.toLocaleString('en-CA', { maximumFractionDigits: 1 })} km2`);
-  out.push(`- Grid cells counted: ${summary.cellCount} (cell size ${meta.cell_size_m} m)`);
-  out.push('- Coordinate system: WGS84, latitude then longitude, in degrees');
-  out.push(`- Vertices (${polygonVertices(poly).length}, in order, outer ring):`, '');
-  out.push('```', coordinatesText(poly), '```', '');
-  out.push('GeoJSON geometry:', '', '```json', JSON.stringify({ type: 'Polygon', coordinates: [polygonCoords(poly)] }), '```', '');
+  h(2, 'Selection');
+  out.push({
+    t: 'ul',
+    items: [
+      `Selected area: ${r.areaKm2.toLocaleString('en-CA', { maximumFractionDigits: 1 })} km2`,
+      `Grid cells counted: ${summary.cellCount} (cell size ${meta.cell_size_m} m)`,
+      'Coordinate system: WGS84, latitude then longitude, in degrees',
+    ],
+  });
+  p(`Vertices (${polygonVertices(poly).length}, in order, outer ring):`);
+  out.push({ t: 'code', text: coordinatesText(poly) });
+  p('GeoJSON geometry:');
+  out.push({ t: 'code', text: JSON.stringify({ type: 'Polygon', coordinates: [polygonCoords(poly)] }) });
 
-  out.push('## Summary statistics', '');
+  h(2, 'Summary statistics');
   const multi = summaries.length > 1;
   const caveats = targetCaveats(meta);
   summaries[0].intervals.forEach((first, k) => {
-    out.push(`### ${first.from} to ${first.to} (${first.years} years)`, '');
+    h(3, `${first.from} to ${first.to} (${first.years} years)`);
     const ivNote = intervalNote(meta, first.from, first.to);
-    if (ivNote) out.push(`**Caution:** ${ivNote}`, '');
+    if (ivNote) p(ivNote, 'Caution: ');
     for (const s of summaries) {
       const iv = s.intervals[k];
-      if (multi) out.push(`#### Natural habitat converted to ${targetLabel(s.target)}`, '');
-      out.push('| Target | Class | Natural ha, baseline | Converted ha | Share converted | ha per year |');
-      out.push('| --- | --- | ---: | ---: | ---: | ---: |');
-      for (const row of [...iv.rows, iv.total]) {
-        out.push(
-          `| ${cap(s.target)} | ${cap(row.cls)} | ${fmtHa(row.naturalHa)} | ${fmtHa(row.convertedHa)} | ${fmtPct(row.percent)} | ${fmtHa(row.ratePerYear)} |`,
-        );
-      }
-      out.push('');
-      if (caveats[s.target]) out.push(`Lower confidence: ${caveats[s.target]}`, '');
+      if (multi) h(4, `Natural habitat converted to ${targetLabel(s.target)}`);
+      out.push({
+        t: 'table',
+        head: ['Target', 'Class', 'Natural ha, baseline', 'Converted ha', 'Share converted', 'ha per year'],
+        right: [2, 3, 4, 5],
+        rows: [...iv.rows, iv.total].map((row) => [
+          cap(s.target),
+          cap(row.cls),
+          fmtHa(row.naturalHa),
+          fmtHa(row.convertedHa),
+          fmtPct(row.percent),
+          fmtHa(row.ratePerYear),
+        ]),
+      });
+      if (caveats[s.target]) p(caveats[s.target], 'Lower confidence: ');
     }
   });
-  out.push(
+  p(
     'Share converted is the percent of baseline natural hectares that were converted to the target class in the later year. A cell counts in one target only, and targets are reported separately, never added together. Class split is indicative; the total is the more reliable figure.',
-    '',
   );
 
-  out.push('## Methods', '', meta.method, '');
-  out.push(`Snapshots used: ${meta.snapshots.join(', ')}`);
-  out.push(`A cell is counted when its centre falls inside the selected shape. Hectares are rounded and approximate.`, '');
-  out.push('## Caveats', '');
-  out.push('- This is a screening tool, not a parcel-level or legal record.');
+  h(2, 'Methods');
+  p(meta.method);
+  p(`Snapshots used: ${meta.snapshots.join(', ')}`);
+  p('A cell is counted when its centre falls inside the selected shape. Hectares are rounded and approximate.');
+  h(2, 'Caveats');
+  const items = ['This is a screening tool, not a parcel-level or legal record.'];
   // Target caveats already appear under their tables above.
   const shown = new Set(Object.values(caveats));
-  for (const c of meta.caveats) if (!shown.has(c)) out.push(`- ${c}`);
-  out.push('', '## Data source', '', meta.source, '');
-  return out.join('\n');
+  for (const c of meta.caveats) if (!shown.has(c)) items.push(c);
+  out.push({ t: 'ul', items });
+  h(2, 'Data source');
+  p(meta.source);
+  return out;
+}
+
+/** Markdown rendering of the report (plain text view, used in tests). */
+export function buildReport(r: ReportInput): string {
+  const lines: string[] = [];
+  for (const b of buildReportDoc(r)) {
+    if (b.t === 'h') lines.push(`${'#'.repeat(b.level)} ${b.text}`, '');
+    else if (b.t === 'p') lines.push(b.boldLead ? `**${b.boldLead.trim()}** ${b.text}` : b.text, '');
+    else if (b.t === 'ul') lines.push(...b.items.map((i) => `- ${i}`), '');
+    else if (b.t === 'code') lines.push('```', b.text, '```', '');
+    else {
+      lines.push(`| ${b.head.join(' | ')} |`);
+      lines.push(`| ${b.head.map((_, i) => (b.right.includes(i) ? '---:' : '---')).join(' | ')} |`);
+      for (const row of b.rows) lines.push(`| ${row.join(' | ')} |`);
+      lines.push('');
+    }
+  }
+  return lines.join('\n');
 }
 
 function polygonCoords(poly: PolygonGeometry): number[][] {

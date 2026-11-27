@@ -37,7 +37,6 @@ import {
 } from './lib/tiles';
 import type { AreaEntry, AreaIndex, BBox, Cells, Meta, PolygonGeometry, ProvinceSummary, Summary, TileEntry } from './lib/types';
 import { polygonAreaKm2 } from './lib/geo';
-import { buildReport } from './lib/report';
 import { decodeShare, encodeShare } from './lib/share';
 import { ICONS, LOGO } from './icons';
 import {
@@ -664,8 +663,8 @@ shareBtn.addEventListener('click', async () => {
   }
 });
 
-function download(text: string, type: string, name: string): void {
-  const blob = new Blob([text], { type });
+function download(data: string | Blob, type: string, name: string): void {
+  const blob = typeof data === 'string' ? new Blob([data], { type }) : data;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
@@ -680,17 +679,26 @@ csvBtn.addEventListener('click', () => {
   download(buildCsv(summarizeTargets(cells, meta, selectedIdx), meta, selectedIdx.length), 'text/csv;charset=utf-8', `conversion-summary-${meta.area_id}.csv`);
 });
 
-reportBtn.addEventListener('click', () => {
+reportBtn.addEventListener('click', async () => {
   if (!summary || !meta || !cells || !currentPoly) return;
-  const md = buildReport({
+  const input = {
     summaries: summarizeTargets(cells, meta, selectedIdx),
     meta,
     poly: currentPoly,
     areaKm2: polygonAreaKm2(currentPoly),
     url: location.href,
     generatedAt: new Date().toISOString(),
-  });
-  download(md, 'text/markdown;charset=utf-8', `conversion-report-${meta.area_id}.md`);
+  };
+  const name = `conversion-report-${meta.area_id}.docx`;
+  reportBtn.disabled = true;
+  try {
+    const { reportDocx } = await import('./lib/reportDocx');
+    download(await reportDocx(input), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', name);
+  } catch (err) {
+    renderError(summaryEl, `Could not make the Word report. ${(err as Error).message}`);
+  } finally {
+    reportBtn.disabled = false;
+  }
 });
 
 $<HTMLInputElement>('chk-grid').addEventListener('change', (e) =>
