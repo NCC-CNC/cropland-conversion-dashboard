@@ -29,7 +29,10 @@ per province (`MB`, `SK`, `all`), per interval, target and class, with
 percent, plus a `coverage` block of regions run and the fraction of the
 farming zone covered, and `method`, `caveats` and dates copied from
 `meta.json`. A reader must call the totals provincial only when
-`provinces.<code>.coverage.complete` is true. Shape and rules:
+`provinces.<code>.coverage.complete` is true. Coverage is the share of each
+region's area mapped by the ACI in the latest year and the baseline (additive
+fields `mapped_km2` per `region_summary` entry in `index.json`, and
+`mapped_fraction`, `covered_by_interval` per coverage row). Shape and rules:
 `05_regional_partitioning.md` (Province summary).
 
 ## meta.json

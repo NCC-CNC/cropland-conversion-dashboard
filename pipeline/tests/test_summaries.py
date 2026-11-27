@@ -90,6 +90,43 @@ def test_complete_coverage():
     assert s["coverage"]["regions_missing"] == []
 
 
+def mapped_entry(rid, cells, mapped):
+    e = entry(rid, cells, cells * 100.0, totals(1, 1, 0, 0, 0))
+    e["mapped_km2"] = mapped
+    return e
+
+
+MAPPED_META = {**META, "snapshots": [2011, 2016, 2025],
+               "intervals": [{"from": 2011, "to": 2025, "years": 14}, {"from": 2016, "to": 2025, "years": 9}]}
+
+
+def test_crop_dominated_region_fully_mapped_is_covered():
+    # a-mb is 1000 km2 but only 100 km2 of natural cells were written; every year maps all of it
+    idx = index([mapped_entry("a-mb", 100, {"2011": 1000.0, "2016": 1000.0, "2025": 1000.0})])
+    row = {r["id"]: r for r in sm.build_summary(idx, MAPPED_META, regions())["coverage"]["regions"]}["a-mb"]
+    assert row["cell_area_km2"] == 100.0 and row["fraction"] == 1.0 and row["covered"] is True
+    assert row["covered_by_interval"] == {"2011-2025": True, "2016-2025": True}
+
+
+def test_unmapped_north_is_not_covered():
+    # the latest year maps only 60 percent of c-sk, and 2011 maps 50 percent
+    idx = index([mapped_entry("c-sk", 1900, {"2011": 1000.0, "2016": 1900.0, "2025": 1200.0})])
+    s = sm.build_summary(idx, MAPPED_META, regions())
+    row = {r["id"]: r for r in s["coverage"]["regions"]}["c-sk"]
+    assert row["mapped_fraction"] == {"2011": 0.5, "2016": 0.95, "2025": 0.6}
+    assert row["covered"] is False and row["fraction"] == 0.5
+    assert row["covered_by_interval"] == {"2011-2025": False, "2016-2025": False}
+    assert s["provinces"]["SK"]["coverage"]["regions_partial"] == ["c-sk"]
+    assert s["provinces"]["SK"]["coverage"]["complete"] is False
+
+
+def test_old_baseline_gap_only_uncovers_its_own_interval():
+    idx = index([mapped_entry("c-sk", 100, {"2011": 1000.0, "2016": 1900.0, "2025": 1900.0})])
+    row = sm.build_summary(idx, MAPPED_META, regions())["coverage"]["regions"][2]
+    assert row["covered_by_interval"] == {"2011-2025": False, "2016-2025": True}
+    assert row["covered"] is False
+
+
 def test_zero_natural_gives_null_percent():
     idx = index([entry("a-mb", 1, 100.0, totals(0.0, 0.0, 0.0, 0.0, 0.0))])
     iv = sm.build_summary(idx, META, regions())["provinces"]["MB"]["intervals"]["2016-2025"]
