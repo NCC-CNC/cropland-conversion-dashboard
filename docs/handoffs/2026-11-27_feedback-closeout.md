@@ -50,7 +50,7 @@ a desk review of validation sources. Four items need the owner.
 
 ## Open issues not part of this feedback
 
-#1, #2, #3, #6.
+Issues #1, #2, #3 and #6.
 
 ## Risks
 
