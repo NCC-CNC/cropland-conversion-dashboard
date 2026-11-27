@@ -211,9 +211,9 @@ describe('buildReport with targets', () => {
     const iCrop = md.indexOf('#### Natural habitat converted to crop');
     const iPasture = md.indexOf('#### Natural habitat converted to pasture');
     const iUrban = md.indexOf('#### Natural habitat converted to urban');
-    expect(md.indexOf(`Lower confidence: ${PASTURE_CAVEAT}`)).toBeGreaterThan(iPasture);
-    expect(md.indexOf(`Lower confidence: ${PASTURE_CAVEAT}`)).toBeLessThan(iUrban);
-    expect(md.indexOf(`Lower confidence: ${URBAN_CAVEAT}`)).toBeGreaterThan(iUrban);
+    expect(md.indexOf(`**Lower confidence:** ${PASTURE_CAVEAT}`)).toBeGreaterThan(iPasture);
+    expect(md.indexOf(`**Lower confidence:** ${PASTURE_CAVEAT}`)).toBeLessThan(iUrban);
+    expect(md.indexOf(`**Lower confidence:** ${URBAN_CAVEAT}`)).toBeGreaterThan(iUrban);
     expect(md.slice(iCrop, iPasture)).not.toContain('Lower confidence');
   });
 
