@@ -462,7 +462,7 @@ function setTarget(target: string): void {
   void update(currentPoly);
 }
 
-/** 30 m converted-pixel layer (ADR 0003). Needs a PMTiles file per area; absent today on the live site. */
+/** 30 m converted-pixel layer (ADR 0003). Needs a PMTiles file per area; areas without one (for example Stettler) 404 on the probe and show no layer. */
 const PIXEL_SRC = 'pixels';
 const PIXEL_LYR = 'pixels-fill';
 let pixelsAvailable = false;
