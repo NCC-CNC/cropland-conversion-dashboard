@@ -59,8 +59,8 @@ RESULTS_DIR = "regional"  # under the cache directory
 PX = fx.PIXEL_M
 
 CAVEAT_2011 = (
-    "The 2011 map shows far more natural cover than 2016 in the Saskatchewan prairie test area (about 40 percent "
-    "more at the same filter settings), so much of the apparent conversion in the 2011 to 2025 interval may be a "
+    "The 2011 map shows far more natural cover than 2016 in the Saskatchewan prairie test area (about two thirds "
+    "more at the default filter settings), so much of the apparent conversion in the 2011 to 2025 interval may be a "
     "mapping difference between years. Compare natural cover across baselines before relying on it, and prefer "
     "the 2016 and 2021 baselines."
 )

@@ -26,7 +26,7 @@
       "from": 2011,
       "to": 2025,
       "years": 14,
-      "note": "The 2011 map shows about 40 percent more natural cover than 2016 in this area, so this interval is unreliable. Prefer the 2016 and 2021 baselines."
+      "note": "The 2011 map shows about two thirds more natural cover than 2016 in this area, so this interval is unreliable. Prefer the 2016 and 2021 baselines."
     },
     {
       "from": 2016,
@@ -62,7 +62,7 @@
     "Conversion to pasture and forage is less certain than conversion to crop. Native grassland and seeded pasture look alike in the Annual Crop Inventory, so some of this may be existing grass that was reseeded or relabelled. It is not added to the cropland figure.",
     "Conversion to urban and developed land is mapped less accurately than crop. Roads, rail lines, well pads and small buildings can appear and disappear between years, so treat small values as uncertain.",
     "Conversion to barren and exposed land is the least reliable target. Bare soil, gravel, dry wetlands and recently cleared land are easily confused, and the label can change from year to year without a real change on the ground.",
-    "The 2011 to 2025 interval for this area is unreliable: the 2011 map shows far more natural cover than 2016 (about 40 percent more at the same filter settings), so much of the apparent conversion is likely a mapping difference between years. Prefer the 2016 and 2021 baselines."
+    "The 2011 to 2025 interval for this area is unreliable: the 2011 map shows far more natural cover than 2016 (about two thirds more at the default filter settings), so much of the apparent conversion is likely a mapping difference between years. Prefer the 2016 and 2021 baselines."
   ],
   "target_caveats": {
     "pasture": "Conversion to pasture and forage is less certain than conversion to crop. Native grassland and seeded pasture look alike in the Annual Crop Inventory, so some of this may be existing grass that was reseeded or relabelled. It is not added to the cropland figure.",
